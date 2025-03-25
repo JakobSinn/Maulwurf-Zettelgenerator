@@ -1,0 +1,34 @@
+{% extends 'zettel/base.html' %}
+
+{% block content %}
+
+{% load django_bootstrap5 %}
+<br>
+<div> <h2>Zettel erstellen</h2>
+Es werden automatisch überschüssige Felder angezeigt; nur Zeilen, bei denen der Vorname nicht leer ist, werden auch gedruckt. Daher bitte Mononyme in das Vornamensfeld eintragen. Der Zettel wird als PDF ausgegeben, und zwar als 2*A5; das Ganze kann dann in den Druckeinstellungen als 1*A4 gedruckt werden. Ob die Kandidaturen schon ausreichend im StuRa gelesen wurden muss anhand der Einträge <b>ganz links händisch überprüft werden.</b>
+<br> Wenn zu viele Kandidaturen auf den Zettel sollen bilden die beiden A5 Blätter zusammen einen Stimmzettel und dürfen nicht zerschnitten werden, leider können dann die Anmerkungen nicht gedruckt werden. In dem Fall bitte einfach die Infos an den Nachnamen anhängen.
+<hr>
+
+<form class="" method="post">
+    {% csrf_token %}
+    {% bootstrap_form_errors DataForm %}
+    <div class="row">
+    {% bootstrap_form DataForm%}
+    </div>
+    {% bootstrap_form NameForm.management_form %}
+    {% bootstrap_formset_errors NameForm %}
+    {% for form in NameForm %}
+    <div class="row g-5">
+        {% for field in form %}
+        <div class="col">
+            {% bootstrap_field field layout='inline'%}
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+    {% bootstrap_button button_type="submit" content="Stimmzettel Generieren" %}
+</form>
+
+</div>
+<br>
+{% endblock %}

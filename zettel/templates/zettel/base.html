@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Stimmzettelgenerator{% endblock %}</title>
+    {% load django_bootstrap5 %}
+    {% bootstrap_css %}
+    {% bootstrap_javascript %}
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <div class="container">
+        <ul class="nav bg-info">
+          <li class="nav-item">
+            <a class="nav-link link-light" href="/">Übersicht</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link link-light" href="/basisform">Leeres Formular</a>
+          </li>
+        </ul>
+
+        <div>
+        {% block content %}
+        {% endblock %}
+        </div>
+        <footer>
+            <br>
+            <p>Die Daten für den Wahlzettelgenerator werden live aus der Kandidaturdatenbank gezogen. Zur Zeit nur mit Dummydaten, also alles kein Problem vom Datenschutz her. Geschrieben von Jakob Sinn 2025</p>
+        </footer>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

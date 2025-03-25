@@ -1,0 +1,14 @@
+{% extends 'zettel/base.html' %}
+
+{% block content %}
+    <div class="container mt-4">
+        <h2 class="mb-2">Relevante Gremien</h2>
+        <ul class="list-group">
+            {% for gremium in gremium_list %}
+                <li class="list-group-item"><a href ="{{ gremium.gremium }}">{{ gremium.gremium }}</a></li>
+            {% empty %}
+                <li class="list-group-item text-muted">No gremien found.</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endblock %}
