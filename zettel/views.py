@@ -223,3 +223,18 @@ def zetteldrucken(kandidaten, posten, datum=heutestr(), jne=False, stimmen=1, pr
         stimmzettel(outpdf, kandidaten[:druckbar], posten, jne=jne, stimmen=stimmen, printbel=printbel)
         assert stimmzettelzwei(outpdf, kandidaten[druckbar:], jne=jne, count=druckbar+1), "Stimmzettel passt nicht auf zwei seiten"
     return bytes(outpdf.output())
+
+
+def bericht(kandidaten, posten, jne):
+    pdf = FPDF(format="A4")
+    #Kopfzeile des Zettels mit Logo, Datum, und zu Abstimmungsgegenstand
+    pdf.set_font("helvetica", "B", 14)
+    pdf.text(20, 20, "Bericht über eine Abstimmung im StuRa"
+    if len(posten)<38: #Kurze Bezeichnungen werden größer gesetzt
+        pdf.set_font("helvetica", "B", 30)
+    else: pdf.set_font("helvetica", "B", 25)
+    pdf.set_y(33)
+    pdf.multi_cell(w=0,text=posten)
+    logo_path = os.path.join(settings.BASE_DIR, "static", "StuRa_Logo_sw_RGB.svg")
+    pdf.image(logo_path, x=70, y=12, h=25)
+    pdf.ln(3)
