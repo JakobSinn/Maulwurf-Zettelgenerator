@@ -26,7 +26,16 @@ Es werden automatisch überschüssige Felder angezeigt; nur Zeilen, bei denen de
         {% endfor %}
     </div>
     {% endfor %}
-    {% bootstrap_button button_type="submit" name="content="Stimmzettel Generieren" %}
+    <br>
+    <div class="row g-5 justify-content-center">
+        <div class="col">
+            {% bootstrap_button button_type="submit" name="willstimmzettel" content="Stimmzettel Generieren" %}
+        </div>
+        <div class="col">
+            {% bootstrap_button button_type="submit" name="willbericht" content="WaKo-Berichtsvorlage generieren" button_class="btn btn-secondary" %}
+        </div>
+    </div>
+    
 </form>
 
 </div>

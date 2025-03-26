@@ -225,11 +225,12 @@ def zetteldrucken(kandidaten, posten, datum=heutestr(), jne=False, stimmen=1, pr
     return bytes(outpdf.output())
 
 
-def bericht(kandidaten, posten, jne):
+def bericht(kandidaten=[], posten="_________________", jne=False):
+    #PDF generieren
     pdf = FPDF(format="A4")
     #Kopfzeile des Zettels mit Logo, Datum, und zu Abstimmungsgegenstand
     pdf.set_font("helvetica", "B", 14)
-    pdf.text(20, 20, "Bericht über eine Abstimmung im StuRa"
+    pdf.text(20, 20, "Bericht über eine Abstimmung im StuRa")
     if len(posten)<38: #Kurze Bezeichnungen werden größer gesetzt
         pdf.set_font("helvetica", "B", 30)
     else: pdf.set_font("helvetica", "B", 25)
@@ -238,3 +239,4 @@ def bericht(kandidaten, posten, jne):
     logo_path = os.path.join(settings.BASE_DIR, "static", "StuRa_Logo_sw_RGB.svg")
     pdf.image(logo_path, x=70, y=12, h=25)
     pdf.ln(3)
+    return bytes(pdf.output())
