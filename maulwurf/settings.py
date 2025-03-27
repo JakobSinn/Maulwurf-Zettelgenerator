@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-$uxb7#=+7rx*o_mm7i5kv5&+j%%40$9*52dvu78t_*e$#z@--7'
+SECRET_KEY = os.environ['SECRET_KEY']
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["maulwurf.stura.uni-heidelberg.de", "localhost"]
 
 
 # Application definition
@@ -80,8 +81,12 @@ WSGI_APPLICATION = 'maulwurf.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        "NAME": "wahlen",
+        "USER": "stimmzettel",
+        "PASSWORD": os.environ["DBKEY"],
+        "HOST": "stura.uni-heidelberg.de",
+        "PORT": "3306",
     }
 }
 
