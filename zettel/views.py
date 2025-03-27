@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, HttpResponse, HttpResponseServerError
 import os
 
 # Create your views here.
@@ -38,9 +38,22 @@ def KandiView(request, gremiumwanted=''):
 
             jnemachen = not (len(namestrs) > einzeldaten['stimmenzahl'])
 
-            response = HttpResponse(zetteldrucken(namestrs, einzeldaten['gremiumname'], extras=extrastrs, stimmen=einzeldaten['stimmenzahl'], jne=jnemachen), content_type='application/pdf')
-            response['Content-Disposition'] = "attachment; filename="+einzeldaten['gremiumname']+heutestr()+'Stimmzettel.pdf'
-            return response
+            if 'willstimmzettel' in request.POST:
+                #Stimmzettel generieren" wurde gedrückt
+                try:
+                    response = HttpResponse(zetteldrucken(namestrs, einzeldaten['gremiumname'], extras=extrastrs, stimmen=einzeldaten['stimmenzahl'], jne=jnemachen), content_type='application/pdf')
+                    response['Content-Disposition'] = "attachment; filename="+einzeldaten['gremiumname']+heutestr()+'Stimmzettel.pdf'
+                    return response
+                except:
+                    return HttpResponseServerError("Leider ist beim Erstellen des Zettels etwas schiefgelaufen, sorry!")
+            if 'willbericht' in request.POST:
+                #Wakobericht wurde gedrückt
+                #try:
+                    response = HttpResponse(bericht(kandidaten=namestrs, posten=einzeldaten['gremiumname'], jne=jnemachen), content_type='application/pdf')
+                    response['Content-Disposition'] = "attachment; filename="+einzeldaten['gremiumname']+heutestr()+'Berichtvorlage.pdf'
+                    return response
+                #except:
+                    #return HttpResponseServerError("Leider ist beim Erstellen des Berichts etwas schiefgelaufen, sorry!")
     else:
         namelist = Kandidatur.objects.filter(bestaetigt='ja').filter(gewaehlt='noch nicht').filter(gremium=gremiumwanted)
         initialname = []
@@ -228,15 +241,48 @@ def zetteldrucken(kandidaten, posten, datum=heutestr(), jne=False, stimmen=1, pr
 def bericht(kandidaten=[], posten="_________________", jne=False):
     #PDF generieren
     pdf = FPDF(format="A4")
+    pdf.set_auto_page_break(True, margin=20)
+    pdf.add_page()
     #Kopfzeile des Zettels mit Logo, Datum, und zu Abstimmungsgegenstand
-    pdf.set_font("helvetica", "B", 14)
-    pdf.text(20, 20, "Bericht über eine Abstimmung im StuRa")
-    if len(posten)<38: #Kurze Bezeichnungen werden größer gesetzt
-        pdf.set_font("helvetica", "B", 30)
-    else: pdf.set_font("helvetica", "B", 25)
-    pdf.set_y(33)
-    pdf.multi_cell(w=0,text=posten)
     logo_path = os.path.join(settings.BASE_DIR, "static", "StuRa_Logo_sw_RGB.svg")
-    pdf.image(logo_path, x=70, y=12, h=25)
-    pdf.ln(3)
+    pdf.image(logo_path, x=100, y=12, h=25)
+    pdf.set_font("helvetica", "B", 22)
+    pdf.set_y(12)
+    pdf.multi_cell(w=80, text="Ergebnis einer Wahl im StuRa", align="C", border=1, padding=5)
+    pdf.set_y(40)
+    pdf.set_font("helvetica", "", size=16)
+    pdf.write_html(text="<p style=\"line-height:1.5\"\\>In der Sitzung vom [  &#160&#160  ] <b>" + heutestr() + "</b> [ &#160&#160  ] ______________ wurde vom Studierendenrat in das Gremium / auf den Posten <b>" + posten + "</b> gewählt. Dabei wurden ______ Stimmzettel abegegeben, davon ______ ungültige(r). <br> <br>Ergebnis:</p>")
+    #Hier wird die tabelle gedruckt
+    if jne:
+        with pdf.table(text_align="CENTER", col_widths=(3,1,1,1.5,1.2)) as table:
+            row = table.row()
+            row.cell("Name")
+            row.cell("Ja")
+            row.cell("Nein")
+            row.cell("Enthaltung")
+            row.cell("Gewählt")
+            for name in kandidaten:
+                row = table.row()
+                row.cell(name)
+                row.cell("")
+                row.cell("")
+                row.cell("")
+                row.cell("")
+    else:
+        with pdf.table(text_align="CENTER", col_widths=(5,1,1)) as table:
+            row = table.row()
+            row.cell("Name")
+            row.cell("Stimmen")
+            row.cell("Gewählt")
+            for name in kandidaten:
+                row = table.row()
+                row.cell(name)
+                row.cell("")
+                row.cell("")
+    #Hier der text unter der Tabelle
+    pdf.ln()
+    pdf.write(text="Anwesende Mitglieder der Wahlkomission oder des Präsidiums:")
+    pdf.ln(20)
+    pdf.write_html(text="<p style=\"line-height:1.5\"\\><b>Unterschriften der Auzählenden</b> (mindestens ein Mitglied von WaKo oder Präsidium muss an der Auszählung beteiligt sein):</p>")
+    pdf.ln(20)
     return bytes(pdf.output())
