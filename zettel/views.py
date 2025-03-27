@@ -48,12 +48,12 @@ def KandiView(request, gremiumwanted=''):
                     return HttpResponseServerError("Leider ist beim Erstellen des Zettels etwas schiefgelaufen, sorry!")
             if 'willbericht' in request.POST:
                 #Wakobericht wurde gedrückt
-                #try:
+                try:
                     response = HttpResponse(bericht(kandidaten=namestrs, posten=einzeldaten['gremiumname'], jne=jnemachen), content_type='application/pdf')
                     response['Content-Disposition'] = "attachment; filename="+einzeldaten['gremiumname']+heutestr()+'Berichtvorlage.pdf'
                     return response
-                #except:
-                    #return HttpResponseServerError("Leider ist beim Erstellen des Berichts etwas schiefgelaufen, sorry!")
+                except:
+                    return HttpResponseServerError("Leider ist beim Erstellen des Berichts etwas schiefgelaufen, sorry!")
     else:
         namelist = Kandidatur.objects.filter(bestaetigt='ja').filter(gewaehlt='noch nicht').filter(gremium=gremiumwanted)
         initialname = []
@@ -67,7 +67,10 @@ def KandiView(request, gremiumwanted=''):
             )
         initialdata = {'gremiumname': gremiumwanted, 'stimmenzahl':len(initialname)}
         einzelform = DataForm(initial=initialdata)
-        namenform = NameFormSet(initial=initialname)
+        if gremiumwanted:
+            namenform = NameFormSet(initial=initialname)
+        else:
+            namenform = ExtraFormSet()
     return render(request, "zettel/form.html", {'DataForm': einzelform, 'NameForm': namenform})
     
 #Hier wird das pdf generiert, bissl messy

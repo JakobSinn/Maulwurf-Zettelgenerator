@@ -12,7 +12,9 @@ class NameForm(forms.Form):
     extratext = forms.CharField(max_length=100, label="Anmerkungen", help_text="Wird kleiner gedruckt", required=False)
     lesung = forms.CharField(max_length=400, widget=PlainTextWidget, required=False, disabled=True, label="Lesung: ")
 
-NameFormSet = formset_factory(NameForm, extra=5)
+NameFormSet = formset_factory(NameForm, extra=2)
+
+ExtraFormSet = formset_factory(NameForm, extra=10)
 
 class DataForm(forms.Form):
     gremiumname = forms.CharField(max_length=200, help_text="Name des zu besetzenden Gremiums oder Postens", label="Zetteltitel")
