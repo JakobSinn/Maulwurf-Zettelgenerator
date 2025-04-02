@@ -14,7 +14,7 @@ class UniqueGremiumListView(ListView):
     context_object_name = 'gremium_list'
 
     def get_queryset(self):
-        return Kandidatur.objects.filter(bestaetigt='ja').values('gremium').distinct()
+        return Kandidatur.objects.filter(bestaetigt='ja').filter(gewaehlt='noch nicht').values('gremium').distinct()
     
 
 def KandiView(request, gremiumwanted=''):
@@ -124,10 +124,10 @@ def header(pdf, datum, stimmgegenstand):
 def stimmbelehrung(pdf, jne=False):
     pdf.set_font("helvetica", "I", 12)
     if jne: 
-        pdf.multi_cell(new_y="LAST", markdown=True, w=0, text="Nur volle Mitglieder (grüne Stimmkarte) und korrekt angemeldete Stellvertreter:innen dürfen abstimmen. In jeder Zeile ist entweder **Ja**, **Nein**, oder **Enthaltung** anzukreuzen.")
+        pdf.multi_cell(new_y="LAST", markdown=True, w=0, text="Nur ordentlich stimmberechtigte Mitglieder (grüne Stimmkarte) und korrekt angemeldete Stellvertreter:innen dürfen abstimmen. In jeder Zeile ist entweder **Ja**, **Nein**, oder **Enthaltung** anzukreuzen.")
         pdf.ln(20)
     else:
-        pdf.multi_cell(w=0, text="Nur volle Mitglieder (grüne Stimmkarte) und korrekt angemeldete Stellvertreter:innen dürfen abstimmen.")
+        pdf.multi_cell(w=0, text="Nur ordentlich stimmberechtigte Mitglieder (grüne Stimmkarte) und korrekt angemeldete Stellvertreter:innen dürfen abstimmen.")
         pdf.ln(15)
 def namendrucken(pdf,namen: list[str], breite, extra=[],start=1):
     assert len(namen) > 0, "Stimmzettel ohne Namen soll gedruckt werden"
@@ -254,7 +254,7 @@ def bericht(kandidaten=[], posten="_________________", jne=False):
     pdf.multi_cell(w=80, text="Ergebnis einer Wahl im StuRa", align="C", border=1, padding=5)
     pdf.set_y(40)
     pdf.set_font("helvetica", "", size=16)
-    pdf.write_html(text="<p style=\"line-height:1.5\"\\>In der Sitzung vom [  &#160&#160  ] <b>" + heutestr() + "</b> [ &#160&#160  ] ______________ wurde vom Studierendenrat in das Gremium / auf den Posten <b>" + posten + "</b> gewählt. Dabei wurden ______ Stimmzettel abegegeben, davon ______ ungültige(r). <br> <br>Ergebnis:</p>")
+    pdf.write_html(text="<p style=\"line-height:1.5\"\\>In der Sitzung vom [  &#160&#160  ] <b>" + heutestr() + "</b> [ &#160&#160  ] ______________ wurde vom Studierendenrat in das Gremium / auf den Posten <b>" + posten + "</b> gewählt. Es wurden ______ Stimmzettel abegegeben, davon ______ ungültig. <br> <br>Ergebnis:</p>")
     #Hier wird die tabelle gedruckt
     if jne:
         with pdf.table(text_align="CENTER", col_widths=(3,1,1,1.5,1.2)) as table:
@@ -284,7 +284,7 @@ def bericht(kandidaten=[], posten="_________________", jne=False):
                 row.cell("")
     #Hier der text unter der Tabelle
     pdf.ln()
-    pdf.write(text="Anwesende Mitglieder der Wahlkomission oder des Präsidiums:")
+    pdf.write(text="Anwesende Mitglieder der Wahlkommission oder des Präsidiums:")
     pdf.ln(20)
     pdf.write_html(text="<p style=\"line-height:1.5\"\\><b>Unterschriften der Auzählenden</b> (mindestens ein Mitglied von WaKo oder Präsidium muss an der Auszählung beteiligt sein):</p>")
     pdf.ln(20)
