@@ -5,10 +5,10 @@
         <h2 class="mb-2">Relevante Gremien</h2>
         Für diese Gremiem oder Posten liegen in der VS-Kandidaturdatenbank aktuelle Kandidaturen vor.
         <ul class="list-group">
-            {% for gremium in gremium_list %}
-                <li class="list-group-item"><a href ="{{ gremium.gremium }}">{{ gremium.gremium }}</a></li>
+            {%for gremium in gremium_list%}
+                <li class="list-group-item"><a href ="{{gremium.gremium|urlencode}}">{{ gremium.gremium }}</a></li>
             {% empty %}
-                <li class="list-group-item text-muted">No gremien found.</li>
+                <li class="list-group-item text-muted">Zur Zeit gibt es im System keine aktiven bestätigten Kandidaturen.</li>
             {% endfor %}
         </ul>
 {% endblock %}
