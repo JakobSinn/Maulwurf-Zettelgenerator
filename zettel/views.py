@@ -18,36 +18,34 @@ class UniqueGremiumListView(ListView):
 
 def KandiView(request, gremiumwanted=''):
     if request.method == 'POST':
-        einzelform = DataForm(request.POST)
-        namenform = NameFormSet(request.POST)
+        stimmzettel_eigenschaften_form = StimmzettelEigenschaftenForm(request.POST)
+        kandidaten_form = NameFormSet(request.POST)
 
-        if not (einzelform.is_valid() and namenform.is_valid()):
-            return
+        if not (stimmzettel_eigenschaften_form.is_valid() and kandidaten_form.is_valid()):
+            return HttpResponse('fehler von felix')
 
-        einzeldaten = einzelform.cleaned_data
-        namensdaten = [nd.cleaned_data for nd in namenform if nd.cleaned_data]
+        stimmzettel_eigenschaften = stimmzettel_eigenschaften_form.cleaned_data
+        kandidaten = [nd.cleaned_data for nd in kandidaten_form if nd.cleaned_data]
 
-        namestrs = []
-        extrastrs = []
+        kandidaten_namen = list(map(
+            lambda kandidat: kandidat['first_name'] + ' ' + kandidat['last_name'], kandidaten))
 
-        extrasdrucken = False
-        for name in namensdaten:
-            if name['firstname']:
-                namestrs.append(name['firstname'] + ' ' + name['lastname'])
-                extrastrs.append(name['extratext'])
-                if name['extratext']:
-                    extrasdrucken = True
+        kandidaten_kommentare = list(map(
+            lambda kandidat: kandidat['candidate_comment'], kandidaten))
 
-        jnemachen = not (len(namestrs) > einzeldaten['stimmenzahl'])
+        # Wenn keine Kampfkandidatur vorliegt, wird bei allen Kandidaten mit ja / nein / enth. abgestimmt.
+        is_jnewahl = not (len(kandidaten_namen) > stimmzettel_eigenschaften['anzahl_stimmen'])
 
         if 'willstimmzettel' in request.POST:
             # Stimmzettel generieren" wurde gedrückt
             try:
-                response = HttpResponse(zetteldrucken(namestrs, einzeldaten['gremiumname'], extras=extrastrs,
-                                                      stimmen=einzeldaten['stimmenzahl'], jne=jnemachen),
-                                        content_type='application/pdf')
-                response['Content-Disposition'] = "attachment; filename=" + einzeldaten[
-                    'gremiumname'] + heutestr() + 'Stimmzettel.pdf'
+                response = (HttpResponse(zetteldrucken(kandidaten_namen, stimmzettel_eigenschaften['gremien_name'],
+                                                       extras=kandidaten_kommentare,
+                                                       stimmen=stimmzettel_eigenschaften['anzahl_stimmen'],
+                                                       jne=is_jnewahl),
+                                         content_type='application/pdf'))
+                response['Content-Disposition'] = "attachment; filename=" + stimmzettel_eigenschaften[
+                    'gremien_name'] + heutestr() + 'Stimmzettel.pdf'
                 return response
             except:
                 return HttpResponseServerError("Leider ist beim Erstellen des Zettels etwas schiefgelaufen, sorry!")
@@ -55,10 +53,11 @@ def KandiView(request, gremiumwanted=''):
             # Wakobericht wurde gedrückt
             try:
                 response = HttpResponse(
-                    bericht(kandidaten=namestrs, posten=einzeldaten['gremiumname'], jne=jnemachen),
+                    bericht(kandidaten=kandidaten_namen, posten=stimmzettel_eigenschaften['gremien_name'],
+                            jne=is_jnewahl),
                     content_type='application/pdf')
-                response['Content-Disposition'] = "attachment; filename=" + einzeldaten[
-                    'gremiumname'] + heutestr() + 'Berichtvorlage.pdf'
+                response['Content-Disposition'] = "attachment; filename=" + stimmzettel_eigenschaften[
+                    'gremien_name'] + heutestr() + 'Berichtvorlage.pdf'
                 return response
             except:
                 return HttpResponseServerError(
@@ -75,10 +74,11 @@ def KandiView(request, gremiumwanted=''):
                  'lesung': n.lesung or " ACHTUNG: Keine Daten in DB!"
                  }
             )
-        initialdata = {'gremiumname': gremiumwanted, 'stimmenzahl': len(initialname)}
-        einzelform = DataForm(initial=initialdata)
+        initialdata = {'gremien_name': gremiumwanted, 'stimmenzahl': len(initialname)}
+        stimmzettel_eigenschaften_form = StimmzettelEigenschaftenForm(initial=initialdata)
         if gremiumwanted:
-            namenform = NameFormSet(initial=initialname)
+            kandidaten_form = NameFormSet(initial=initialname)
         else:
-            namenform = ExtraFormSet()
-    return render(request, "zettel/form.html", {'DataForm': einzelform, 'NameForm': namenform})
+            kandidaten_form = ExtraFormSet()
+    return render(request, "zettel/form.html",
+                  {'DataForm': stimmzettel_eigenschaften_form, 'NameForm': kandidaten_form})

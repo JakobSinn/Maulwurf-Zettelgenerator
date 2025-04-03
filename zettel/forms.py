@@ -9,19 +9,21 @@ class PlainTextWidget(forms.Widget):
 
 
 class NameForm(forms.Form):
-    firstname = forms.CharField(max_length=50, required=False, label="Vorname")
-    lastname = forms.CharField(max_length=50, required=False, label="Nachname", help_text="Optional")
-    extratext = forms.CharField(max_length=100, label="Anmerkungen", help_text="Wird kleiner gedruckt", required=False)
+    first_name = forms.CharField(max_length=50, required=False, label="Vorname")
+    last_name = forms.CharField(max_length=50, required=False, label="Nachname", help_text="Optional")
+    candidate_comment = forms.CharField(max_length=100, label="Anmerkungen", help_text="Wird kleiner gedruckt",
+                                        required=False)
+
     lesung = forms.CharField(max_length=400, widget=PlainTextWidget, required=False, disabled=True, label="Lesung: ")
+
+
+class StimmzettelEigenschaftenForm(forms.Form):
+    gremien_name = forms.CharField(max_length=200, help_text="Name des zu besetzenden Gremiums oder Postens",
+                                   label="Zetteltitel")
+    anzahl_stimmen = forms.IntegerField(max_value=50, min_value=1,
+                                        help_text="Stimmen, die auf diesem Zettel erwartet werden", initial=1)
 
 
 NameFormSet = formset_factory(NameForm, extra=2)
 
 ExtraFormSet = formset_factory(NameForm, extra=10)
-
-
-class DataForm(forms.Form):
-    gremiumname = forms.CharField(max_length=200, help_text="Name des zu besetzenden Gremiums oder Postens",
-                                  label="Zetteltitel")
-    stimmenzahl = forms.IntegerField(max_value=50, min_value=1,
-                                     help_text="Stimmen, die auf diesem Zettel erwartet werden", initial=1)
