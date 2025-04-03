@@ -26,6 +26,6 @@ class Kandidatur(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name.upper()}, {self.gremium}"
 
-    class Meta:
-        managed = False
-        db_table = "copy_vs_kandidatur"
+    # class Meta:
+    #    managed = False
+    #    db_table = "copy_vs_kandidatur"

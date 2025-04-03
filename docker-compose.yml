@@ -1,0 +1,12 @@
+services:
+  maulwurf-zettelgenerator:
+    build: .
+    expose:
+      - 8000
+    ports:
+      - "8000:8000"
+
+  nginx:
+    build: nginx-docker
+    ports:
+      - "80:80"
