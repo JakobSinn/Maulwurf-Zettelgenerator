@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -15,12 +14,15 @@ class Migration(migrations.Migration):
             name='Kandidatur',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('gewaehlt', models.CharField(choices=[('noch nicht', 'Noch nicht abgestimmt'), ('ja', 'Gewählt'), ('nein', 'Nicht Gewählt'), ('zurueckgezogen', 'Kandidatur zurückgezogen')], default='noch nicht', max_length=50)),
+                ('gewaehlt', models.CharField(
+                    choices=[('noch nicht', 'Noch nicht abgestimmt'), ('ja', 'Gewählt'), ('nein', 'Nicht Gewählt'),
+                             ('zurueckgezogen', 'Kandidatur zurückgezogen')], default='noch nicht', max_length=50)),
                 ('gremium', models.CharField(max_length=225)),
                 ('lesung', models.CharField(blank=True, max_length=225)),
                 ('first_name', models.CharField(blank=True, max_length=225)),
                 ('last_name', models.CharField(max_length=225)),
-                ('bestaetigt', models.CharField(choices=[('ja', 'Ja'), ('nein', 'Nein')], default='nein', max_length=50)),
+                ('bestaetigt',
+                 models.CharField(choices=[('ja', 'Ja'), ('nein', 'Nein')], default='nein', max_length=50)),
             ],
         ),
     ]
