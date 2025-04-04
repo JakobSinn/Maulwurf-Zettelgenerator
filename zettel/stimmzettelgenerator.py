@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 from django.conf import settings
-from fpdf import *
+from fpdf import FPDF
 
 
 # strings, die später noch gebraucht werden
@@ -83,7 +83,7 @@ def namendrucken(pdf, namen: list[str], breite, extra=[], start=1):
             pdf.ln(0.1)
             pdf.set_x(30)
             pdf.set_font("helvetica", "", 12)
-            pdf.multi_cell(w=breite, text=extra[nr], align="L")
+            pdf.multi_cell(w=breite - 10, text=extra[nr], align="L")
         pdf.ln(9)
         untery = pdf.get_y() - 5
         ymiddle.append(obery + (untery - obery) / 2)
@@ -145,6 +145,7 @@ def stimmzettel(pdf, kandidaten: list[str], posten: str, jne: bool, stimmen=1, d
 
 
 def stimmzettelzwei(pdf, kandidaten: list[str], jne: bool, count, extras=[]):
+    print("Stimmzettelzwei hat als extras bekommen: " + str(extras))
     felderabstand = 12
     zahlkandi = len(kandidaten)
     assert zahlkandi > 0, "Mindesten eine Option sollte auf dem Zettel stehen"
@@ -181,7 +182,7 @@ def zetteldrucken(kandidaten, posten, datum=heutestr(), jne=False, stimmen=1, pr
     if druckbar > 11: druckbar = 11  # spart zu langes suchen nach noch druckbarem zettel
     while True:
         testpdf = FPDF(format="A5")
-        resultbin = stimmzettel(testpdf, kandidaten[:druckbar], posten, jne=jne, stimmen=stimmen, printbel=printbel)
+        resultbin = stimmzettel(testpdf, kandidaten[:druckbar], posten, jne=jne, stimmen=stimmen, printbel=printbel, extras=extras[:druckbar])
         if resultbin:
             break
         else:
@@ -196,8 +197,8 @@ def zetteldrucken(kandidaten, posten, datum=heutestr(), jne=False, stimmen=1, pr
         stimmzettel(outpdf, kandidaten, posten, jne=jne, stimmen=stimmen, printbel=printbel, extras=extras)
     else:
         print("Großen Stimmzettel ausgeben...")
-        stimmzettel(outpdf, kandidaten[:druckbar], posten, jne=jne, stimmen=stimmen, printbel=printbel)
-        assert stimmzettelzwei(outpdf, kandidaten[druckbar:], jne=jne,
+        stimmzettel(outpdf, kandidaten[:druckbar], posten, jne=jne, stimmen=stimmen, extras=extras[:druckbar], printbel=printbel)
+        assert stimmzettelzwei(outpdf, kandidaten[druckbar:], jne=jne, extras=extras[druckbar:], 
                                count=druckbar + 1), "Stimmzettel passt nicht auf zwei seiten"
     return bytes(outpdf.output())
 
