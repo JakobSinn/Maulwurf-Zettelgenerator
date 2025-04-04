@@ -2,7 +2,7 @@ from django.http import HttpResponse, HttpResponseServerError
 from django.shortcuts import render
 from django.views.generic import ListView
 
-from .forms import *
+from .forms import StimmzettelEigenschaftenForm, NameFormSet, ExtraFormSet
 from .models import Kandidatur
 from .stimmzettelgenerator import zetteldrucken, heutestr, bericht
 
@@ -22,7 +22,7 @@ def KandiView(request, gremiumwanted=''):
         kandidaten_form = NameFormSet(request.POST)
 
         if not (stimmzettel_eigenschaften_form.is_valid() and kandidaten_form.is_valid()):
-            return HttpResponse('fehler von felix')
+            return HttpResponseServerError('Die Eingaben gefallen dem Server nicht.')
 
         stimmzettel_eigenschaften = stimmzettel_eigenschaften_form.cleaned_data
         kandidaten = [nd.cleaned_data for nd in kandidaten_form if nd.cleaned_data]
@@ -68,9 +68,9 @@ def KandiView(request, gremiumwanted=''):
         initialname = []
         for n in namelist:
             initialname.append(
-                {'firstname': n.first_name,
-                 'lastname': n.last_name,
-                 'extratext': n.fakultaetFachschaft,
+                {'first_name': n.first_name,
+                 'last_name': n.last_name,
+                 'candidate_comment': n.fakultaetFachschaft,
                  'lesung': n.lesung or " ACHTUNG: Keine Daten in DB!"
                  }
             )
