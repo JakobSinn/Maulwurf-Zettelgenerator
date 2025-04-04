@@ -59,9 +59,9 @@ def KandiView(request, gremiumwanted=''):
                 response['Content-Disposition'] = "attachment; filename=" + stimmzettel_eigenschaften[
                     'gremien_name'] + heutestr() + 'Berichtvorlage.pdf'
                 return response
-            except:
-                return HttpResponseServerError(
-                    "Leider ist beim Erstellen des Berichts etwas schiefgelaufen, sorry!")
+            except Exception as e: 
+                print(e)
+                return HttpResponseServerError("Leider ist beim Erstellen des Berichts etwas schiefgelaufen, sorry! " + repr(e))
     else:
         namelist = Kandidatur.objects.filter(bestaetigt='ja').filter(gewaehlt='noch nicht').filter(
             gremium=gremiumwanted)

@@ -28,8 +28,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = (os.getenv('DEBUG') == 'True')
 
+#TODO: #5 Allowed_hosts korrekt einstellen
 ALLOWED_HOSTS = ("*",)
 
 # Application definition
@@ -81,20 +82,24 @@ WSGI_APPLICATION = 'maulwurf.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    #     'default': {
-    #         'ENGINE': 'django.db.backends.mysql',
-    #         "NAME": "wahlen",
-    #         "USER": "stimmzettel",
-    #         "PASSWORD": os.getenv("DBKEY"),
-    #         "HOST": "stura.uni-heidelberg.de",
-    #         "PORT": "3306",
-    #     }
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": "database.db3",
+if os.getenv("DEBUG") == "True":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": "database.db3",
+        }
     }
-}
+else:
+    DATABASES = {    
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            "NAME": "wahlen",
+            "USER": "stimmzettel",
+            "PASSWORD": os.getenv("DBKEY"),
+            "HOST": "stura.uni-heidelberg.de",
+            "PORT": "3306",
+    }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
