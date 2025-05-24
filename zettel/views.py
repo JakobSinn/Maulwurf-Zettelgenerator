@@ -8,13 +8,18 @@ from .stimmzettelgenerator import zetteldrucken, heutestr, bericht
 
 
 class UniqueGremiumListView(ListView):
+    '''
+    Dieser View gibt eine Liste aller Ämter, für die Kandidaturen existieren aus
+    '''
     model = Kandidatur
-    template_name = 'zettel/index.html'  # Replace with your template
+    template_name = 'zettel/index.html'
     context_object_name = 'gremium_list'
 
     def get_queryset(self):
-        return Kandidatur.objects.filter(bestaetigt='ja').filter(gewaehlt='noch nicht').values('gremium').distinct()
-
+        try:
+            return Kandidatur.objects.filter(bestaetigt='ja').filter(gewaehlt='noch nicht').values('gremium').distinct()
+        except:  # noqa: E722
+            return {}
 
 def KandiView(request, gremiumwanted=''):
     if request.method == 'POST':

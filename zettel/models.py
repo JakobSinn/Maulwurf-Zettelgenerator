@@ -1,5 +1,6 @@
 import os
 from django.db import models
+from django.conf import settings
 
 
 # Create your models here.
@@ -28,7 +29,7 @@ class Kandidatur(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name.upper()}, {self.gremium}"
 
-    if not os.getenv("DEBUG") == "True":
+    if not settings.DEBUG:
         class Meta:
             managed = False
             db_table = "vs_kandidatur"

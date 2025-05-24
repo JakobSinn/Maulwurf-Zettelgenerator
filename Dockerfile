@@ -16,6 +16,6 @@ WORKDIR /opt/app
 RUN pip install --no-input -r requirements.txt
 RUN pip install --no-input gunicorn
 
-CMD ["gunicorn", "-w", "4", "maulwurf.wsgi", "-b", "0.0.0.0:8000"]
+CMD ["gunicorn", "-w", "1", "maulwurf.wsgi", "-b", "0.0.0.0:8000"]
 
 # CMD /bin/bash

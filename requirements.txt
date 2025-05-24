@@ -11,7 +11,8 @@ django-bootstrap==0.2.4
 django-bootstrap5==25.1
 django-crispy-forms==2.3
 fonttools==4.56.0
-fpdf2==2.8.2
+fpdf2[svg]
+whitenoise
 mysqlclient==2.2.7
 packaging==24.2
 pillow==11.1.0

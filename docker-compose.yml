@@ -5,8 +5,12 @@ services:
       - 8000
     ports:
       - "8000:8000"
+    volumes:
+      - ./static:/static
 
   nginx:
-    build: nginx-docker
+    build:
+      context: .
+      dockerfile: nginx-docker/Dockerfile
     ports:
       - "80:80"

@@ -1,9 +1,8 @@
 import os
 from datetime import datetime
-
+from django.templatetags.static import static
 from django.conf import settings
 from fpdf import FPDF
-
 
 # strings, die später noch gebraucht werden
 def heutestr():
@@ -36,7 +35,7 @@ def linkeinfuegen(pdf):
         pdf.set_y(185)
         pdf.set_x(25)
         pdf.multi_cell(w=70, text='Bewerbungsschreiben sind aus dem Uninetz heraus abrufbar unter:')
-        qr_path = os.path.join(settings.BASE_DIR, "static", "qrcode.svg")
+        qr_path = static("qrcode.svg")
         pdf.image(qr_path, x=100, y=pdf.get_y() - 20, w=30)
 
 
@@ -52,7 +51,7 @@ def header(pdf, datum, stimmgegenstand):
         pdf.set_font("helvetica", "B", 18)
     pdf.set_y(33)
     pdf.multi_cell(w=0, text=stimmgegenstand)
-    logo_path = os.path.join(settings.BASE_DIR, "static", "StuRa_Logo_sw_RGB.svg")
+    logo_path = static("StuRa_Logo_sw_RGB.svg")
     pdf.image(logo_path, x=70, y=12, h=15)
     pdf.ln(3)
 
@@ -172,7 +171,10 @@ def stimmzettelzwei(pdf, kandidaten: list[str], jne: bool, count, extras=[]):
     if (pdf.get_y() > 205):
         return False
     else:
-        linkeinfuegen(pdf)
+        try:
+            linkeinfuegen(pdf)
+        except:
+            pass
         return pdf
 
 
@@ -209,7 +211,7 @@ def bericht(kandidaten=[], posten="_________________", jne=False):
     pdf.set_auto_page_break(True, margin=20)
     pdf.add_page()
     # Kopfzeile des Zettels mit Logo, Datum, und zu Abstimmungsgegenstand
-    logo_path = os.path.join(settings.BASE_DIR, "static", "StuRa_Logo_sw_RGB.svg")
+    logo_path = static("StuRa_Logo_sw_RGB.svg")
     pdf.image(logo_path, x=100, y=12, h=25)
     pdf.set_font("helvetica", "B", 22)
     pdf.set_y(12)
