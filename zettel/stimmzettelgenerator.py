@@ -6,6 +6,9 @@ from django.contrib.staticfiles import finders
 def heutestr():
     return datetime.today().strftime('%d.%m.%y')
 
+def jetztstr():
+    return datetime.today().strftime('%d.%m.%y %H:%M')
+
 
 def belehrstr(stimmen: int, multipage=False):
     s = "Du hast "
@@ -37,20 +40,22 @@ def linkeinfuegen(pdf):
         pdf.image(qr_path, x=100, y=pdf.get_y() - 20, w=30)
 
 
-def header(pdf, datum, stimmgegenstand):
+def header(pdf, abstimmungsdatum, stimmgegenstand):
     # Kopfzeile des Zettels mit Logo, Datum, und zu Abstimmungsgegenstand
+    pdf.set_font("helvetica", "B", 16)
+    pdf.text(18, 18, "Stimmzettel")
+    pdf.set_font("helvetica", "", 10)
+    pdf.text(13, 26, "Abstimmung am ")
     pdf.set_font("helvetica", "B", 14)
-    pdf.text(20, 20, "Stimmzettel")
-    pdf.set_font("helvetica", "", 12)
-    pdf.text(20, 26, "erstellt am " + datum)
-    if len(stimmgegenstand) < 28:  # Kurze Bezeichnungen werden größer gesetzt
+    pdf.text(40, 26, abstimmungsdatum.strftime('%d.%m.%y'))
+    if len(stimmgegenstand) < 34:  # Kurze Bezeichnungen werden größer gesetzt
         pdf.set_font("helvetica", "B", 26)
     else:
         pdf.set_font("helvetica", "B", 18)
     pdf.set_y(33)
     pdf.multi_cell(w=0, text=stimmgegenstand)
     logo_path = finders.find("StuRa_Logo_sw_RGB.svg")
-    pdf.image(logo_path, x=70, y=12, h=15)
+    pdf.image(logo_path, x=67, y=9, h=18)
     pdf.ln(3)
 
 
@@ -116,17 +121,17 @@ def dreistimmfelder(pdf, y, abstand=12, x=120):
         stimmfeld(pdf, y, x=xhier)
 
 
-def stimmzettel(pdf, kandidaten: list[str], posten: str, jne: bool, stimmen=1, datum=heutestr(), extras=[],
+def stimmzettel(pdf, kandidaten: list[str], posten: str, jne: bool, stimmen=1, datum=heutestr(), abstimmungsdatum=datetime.today(), extras=[],
                 printbel=True):
     felderabstand = 12
     assert stimmen > 0, "Mitglieder sollten mindestens eine Stimme haben"
     pdf.set_auto_page_break(False, margin=0)
     pdf.add_page()
-    header(pdf, datum, posten)
+    header(pdf, abstimmungsdatum, posten)
     if printbel:
         stimmbelehrung(pdf, jne=jne)
     else:
-        pdf.ln(15)  # Damit wenn keine belehrung gedruckt wird die texte nicht ineinander rutschen
+        pdf.ln(10)  # Damit wenn keine belehrung gedruckt wird die texte nicht ineinander rutschen
     # Text über den Kästchen
     textueberfelder(pdf, jne, stimmen, felderabstand)
     # teil mit den namen drucken
@@ -134,7 +139,8 @@ def stimmzettel(pdf, kandidaten: list[str], posten: str, jne: bool, stimmen=1, d
     if (pdf.get_y() > 205):
         return False
     else:
-        #linkeinfuegen(pdf) (Es soll kein Link eingefügt werden)
+        pdf.set_font("helvetica", "", 8)
+        pdf.text(100, 205, text="Zettel erstellt: " + jetztstr())
         return pdf
 
 
@@ -169,7 +175,7 @@ def stimmzettelzwei(pdf, kandidaten: list[str], jne: bool, count, extras=[]):
 
 
 # stimmzettel managment
-def zetteldrucken(kandidaten, posten, datum=heutestr(), jne=False, stimmen=1, printbel=True, extras=[]):
+def zetteldrucken(kandidaten, posten, abstimmungsdatum, jne=False, stimmen=1, printbel=True, extras=[]):
     druckbar = len(kandidaten)
     if druckbar > 11: druckbar = 11  # spart zu langes suchen nach noch druckbarem zettel
     while True:
@@ -179,23 +185,23 @@ def zetteldrucken(kandidaten, posten, datum=heutestr(), jne=False, stimmen=1, pr
             break
         else:
             druckbar = druckbar - 1
-    # druckbar enthält jetzt die zahl an Einträgen, die auf die erste seite passen
+    # druckbar enthält jetzt die Zahl an Einträgen, die auf die erste Seite passen
     print("Es sollen " + str(len(kandidaten)) + " Zeilen gedruckt werden, davon passen " + str(
         druckbar) + " auf die erste Seite.")
     outpdf = FPDF(format="A5")
     if druckbar == len(kandidaten):
         print("Doppeltes pdf ausgeben...")
-        stimmzettel(outpdf, kandidaten, posten, jne=jne, stimmen=stimmen, printbel=printbel, extras=extras)
-        stimmzettel(outpdf, kandidaten, posten, jne=jne, stimmen=stimmen, printbel=printbel, extras=extras)
+        stimmzettel(outpdf, kandidaten, posten, abstimmungsdatum=abstimmungsdatum, jne=jne, stimmen=stimmen, printbel=printbel, extras=extras)
+        stimmzettel(outpdf, kandidaten, posten, abstimmungsdatum=abstimmungsdatum, jne=jne, stimmen=stimmen, printbel=printbel, extras=extras)
     else:
         print("Großen Stimmzettel ausgeben...")
-        stimmzettel(outpdf, kandidaten[:druckbar], posten, jne=jne, stimmen=stimmen, extras=extras[:druckbar], printbel=printbel)
+        stimmzettel(outpdf, kandidaten[:druckbar], posten, abstimmungsdatum=abstimmungsdatum, jne=jne, stimmen=stimmen, extras=extras[:druckbar], printbel=printbel)
         assert stimmzettelzwei(outpdf, kandidaten[druckbar:], jne=jne, extras=extras[druckbar:], 
-                               count=druckbar + 1), "Stimmzettel passt nicht auf zwei seiten"
+                               count=druckbar + 1), "Stimmzettel passt nicht auf zwei Seiten"
     return bytes(outpdf.output())
 
 
-def bericht(kandidaten=[], posten="_________________", jne=False):
+def bericht(kandidaten=[], posten="_________________", jne=False, abstimmungsdatum=datetime.today()):
     # PDF generieren
     pdf = FPDF(format="A4")
     pdf.set_auto_page_break(True, margin=20)
@@ -209,7 +215,7 @@ def bericht(kandidaten=[], posten="_________________", jne=False):
     pdf.set_y(40)
     pdf.set_font("helvetica", "", size=16)
     pdf.write_html(
-        text="<p style=\"line-height:1.5\"\\>In der Sitzung vom [  &#160&#160  ] <b>" + heutestr() + "</b> [ &#160&#160  ] ______________ wurde vom Studierendenrat in das Gremium / auf den Posten <b>" + posten + "</b> gewählt. Es wurden ______ Stimmzettel abgegeben, davon waren ______ ungültig. <br> <br>Ergebnis:</p>")
+        text="<p style=\"line-height:1.5\"\\>In der Sitzung vom <b>" + abstimmungsdatum.strftime('%d.%m.%y') + "</b> wurde vom Studierendenrat in das Gremium / auf den Posten <b>" + posten + "</b> gewählt. Es wurden ______ Stimmzettel abgegeben, davon waren ______ ungültig. <br> <br>Ergebnis:</p>")
     # Hier wird die tabelle gedruckt
     if jne:
         with pdf.table(text_align="CENTER", col_widths=(3, 1, 1, 1.5, 1.2)) as table:

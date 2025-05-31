@@ -22,7 +22,7 @@ class Kandidatur(models.Model):
     gremium = models.CharField(max_length=225)
     lesung = models.CharField(max_length=225, blank=True)
     first_name = models.CharField(max_length=225, blank=True)
-    last_name = models.CharField(max_length=225)
+    last_name = models.CharField(max_length=225, blank=True)
     bestaetigt = models.CharField(max_length=50, choices=BESTAETIGT_CHOICES, default='nein')
     fakultaetFachschaft = models.CharField(max_length=255, blank=True)
 

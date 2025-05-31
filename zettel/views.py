@@ -44,10 +44,10 @@ def KandiView(request, gremiumwanted=''):
         if 'willstimmzettel' in request.POST:
             # Stimmzettel generieren" wurde gedrückt
             try:
-                response = (HttpResponse(zetteldrucken(kandidaten_namen, stimmzettel_eigenschaften['gremien_name'],
+                response = (HttpResponse(zetteldrucken(kandidaten_namen, stimmzettel_eigenschaften['gremien_name'], abstimmungsdatum=stimmzettel_eigenschaften['abstimmung_datum'],
                                                        extras=kandidaten_kommentare,
                                                        stimmen=stimmzettel_eigenschaften['anzahl_stimmen'],
-                                                       jne=is_jnewahl),
+                                                       jne=is_jnewahl, printbel=stimmzettel_eigenschaften['belehrung_drucken']),
                                          content_type='application/pdf'))
                 response['Content-Disposition'] = "attachment; filename=" + stimmzettel_eigenschaften[
                     'gremien_name'] + heutestr() + 'Stimmzettel.pdf'
@@ -60,7 +60,7 @@ def KandiView(request, gremiumwanted=''):
             try:
                 response = HttpResponse(
                     bericht(kandidaten=kandidaten_namen, posten=stimmzettel_eigenschaften['gremien_name'],
-                            jne=is_jnewahl),
+                            jne=is_jnewahl, abstimmungsdatum=stimmzettel_eigenschaften['abstimmung_datum']),
                     content_type='application/pdf')
                 response['Content-Disposition'] = "attachment; filename=" + stimmzettel_eigenschaften[
                     'gremien_name'] + heutestr() + 'Berichtvorlage.pdf'

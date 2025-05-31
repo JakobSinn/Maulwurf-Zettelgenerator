@@ -5,16 +5,35 @@
 {% load django_bootstrap5 %}
 <br>
 <div> <h2>Zettel erstellen</h2>
-Es werden automatisch überschüssige Felder angezeigt; nur Zeilen, bei denen der Vorname nicht leer ist, werden auch gedruckt. Daher bitte Mononyme in das Vornamensfeld eintragen. Der Zettel wird als PDF ausgegeben, und zwar als 2*A5; das Ganze kann dann in den Druckeinstellungen als 1*A4 gedruckt werden. Ob die Kandidaturen schon ausreichend im StuRa gelesen wurden muss anhand der Einträge <b>ganz links händisch überprüft werden.</b>
+Es werden automatisch überschüssige Felder angezeigt; nur Zeilen, bei denen der Vorname nicht leer ist, werden auch gedruckt. Daher bitte Mononyme in das Vornamensfeld eintragen. Der Zettel wird als PDF ausgegeben, und zwar als 2*A5; das Ganze kann dann in den Druckeinstellungen als 1*A4 gedruckt werden.
 Wenn zu viele Kandidaturen auf den Zettel sollen bilden die beiden A5 Blätter zusammen einen Stimmzettel und dürfen nicht zerschnitten werden.
+<br>
+Ob die Kandidaturen schon ausreichend im StuRa gelesen wurden muss anhand der Einträge <b>ganz links händisch überprüft werden.</b> Wie viele Stimmen die Mitglieder haben sollen (also wie viele Plätz zu besetzen sind) kann im Allgemeinen unter dem Link "Ämterübersicht" nachgeschaut werden.
 <hr>
 
-<form class="" method="post">
+<form class="align-items-center" method="post">
     {% csrf_token %}
     {% bootstrap_form_errors DataForm %}
-    <div class="row">
-    {% bootstrap_form DataForm%}
-    </div>
+    <div class="mb-3">
+        {% bootstrap_field DataForm.gremien_name %}
+      </div>
+      
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          {% bootstrap_field DataForm.abstimmung_datum %}
+        </div>
+        <div class="col-md-4 mb-3">
+          {% bootstrap_field DataForm.anzahl_stimmen %}
+        </div>
+        <div class="col-md-4 mb-3 d-flex align-items-center">
+          <div class="form-check">
+            {{ DataForm.belehrung_drucken }}
+            <label class="form-check-label" for="{{ DataForm.belehrung_drucken.id_for_label }}">
+                {{ DataForm.belehrung_drucken.label }}
+            </label>
+          </div>
+        </div>
+      </div>
     {% bootstrap_form NameForm.management_form %}
     {% bootstrap_formset_errors NameForm %}
     {% for form in NameForm %}

@@ -21,9 +21,10 @@ class NameForm(forms.Form):
 class StimmzettelEigenschaftenForm(forms.Form):
     gremien_name = forms.CharField(max_length=200, help_text="Name des zu besetzenden Gremiums oder Postens",
                                    label="Zetteltitel")
-    anzahl_stimmen = forms.IntegerField(max_value=50, min_value=1,
-                                        help_text="Stimmen, die auf diesem Zettel erwartet werden", initial=1)
-    abstimmung_datum = forms.DateField(label="Abstimmungsdatum", initial=datetime.today())
+    anzahl_stimmen = forms.IntegerField(max_value=50, min_value=1, label="Anzahl Stimmen",
+                                        help_text="Gegebenenfalls wird Ja/Nein/Enthaltung verwendet", initial=1)
+    abstimmung_datum = forms.DateField(label="Abstimmungsdatum", initial=datetime.today(), help_text="Format: JJJJ-MM-TT")
+    belehrung_drucken = forms.BooleanField(label="Belehrung drucken", initial=True, required=False)
 
 
 NameFormSet = formset_factory(NameForm, extra=2)
