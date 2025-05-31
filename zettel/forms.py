@@ -1,6 +1,7 @@
 from django import forms
 from django.forms import formset_factory
 from django.utils.safestring import mark_safe
+from datetime import datetime
 
 
 class PlainTextWidget(forms.Widget):
@@ -22,6 +23,7 @@ class StimmzettelEigenschaftenForm(forms.Form):
                                    label="Zetteltitel")
     anzahl_stimmen = forms.IntegerField(max_value=50, min_value=1,
                                         help_text="Stimmen, die auf diesem Zettel erwartet werden", initial=1)
+    abstimmung_datum = forms.DateField(label="Abstimmungsdatum", initial=datetime.today())
 
 
 NameFormSet = formset_factory(NameForm, extra=2)

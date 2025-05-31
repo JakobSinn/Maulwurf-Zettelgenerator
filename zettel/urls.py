@@ -4,6 +4,6 @@ from . import views
 
 urlpatterns = [
     path("", views.UniqueGremiumListView.as_view(), name="index"),
-    path("basisform", views.KandiView),
-    path("<path:gremiumwanted>", views.KandiView),
+    path("basisform", views.KandiView, name ="leer"),
+    path("gremium/<path:gremiumwanted>", views.KandiView, name="Kandidaturen"),
 ]

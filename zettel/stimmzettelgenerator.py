@@ -1,8 +1,6 @@
-import os
 from datetime import datetime
-from django.templatetags.static import static
-from django.conf import settings
 from fpdf import FPDF
+from django.contrib.staticfiles import finders
 
 # strings, die später noch gebraucht werden
 def heutestr():
@@ -35,7 +33,7 @@ def linkeinfuegen(pdf):
         pdf.set_y(185)
         pdf.set_x(25)
         pdf.multi_cell(w=70, text='Bewerbungsschreiben sind aus dem Uninetz heraus abrufbar unter:')
-        qr_path = static("qrcode.svg")
+        qr_path = finders.find("qrcode.svg")
         pdf.image(qr_path, x=100, y=pdf.get_y() - 20, w=30)
 
 
@@ -51,7 +49,7 @@ def header(pdf, datum, stimmgegenstand):
         pdf.set_font("helvetica", "B", 18)
     pdf.set_y(33)
     pdf.multi_cell(w=0, text=stimmgegenstand)
-    logo_path = static("StuRa_Logo_sw_RGB.svg")
+    logo_path = finders.find("StuRa_Logo_sw_RGB.svg")
     pdf.image(logo_path, x=70, y=12, h=15)
     pdf.ln(3)
 
@@ -69,7 +67,6 @@ def stimmbelehrung(pdf, jne=False):
 
 
 def namendrucken(pdf, namen: list[str], breite, extra=[], start=1):
-    assert len(namen) > 0, "Stimmzettel ohne Namen soll gedruckt werden"
     extradrucken = (len(namen) == len(extra))
     ymiddle = []
     for nr in range(len(namen)):
@@ -122,9 +119,7 @@ def dreistimmfelder(pdf, y, abstand=12, x=120):
 def stimmzettel(pdf, kandidaten: list[str], posten: str, jne: bool, stimmen=1, datum=heutestr(), extras=[],
                 printbel=True):
     felderabstand = 12
-    zahlkandi = len(kandidaten)
     assert stimmen > 0, "Mitglieder sollten mindestens eine Stimme haben"
-    assert zahlkandi > 0, "Mindesten eine Option sollte auf dem Zettel stehen"
     pdf.set_auto_page_break(False, margin=0)
     pdf.add_page()
     header(pdf, datum, posten)
@@ -139,15 +134,14 @@ def stimmzettel(pdf, kandidaten: list[str], posten: str, jne: bool, stimmen=1, d
     if (pdf.get_y() > 205):
         return False
     else:
-        linkeinfuegen(pdf)
+        #linkeinfuegen(pdf) (Es soll kein Link eingefügt werden)
         return pdf
 
 
 def stimmzettelzwei(pdf, kandidaten: list[str], jne: bool, count, extras=[]):
-    print("Stimmzettelzwei hat als extras bekommen: " + str(extras))
     felderabstand = 12
     zahlkandi = len(kandidaten)
-    assert zahlkandi > 0, "Mindesten eine Option sollte auf dem Zettel stehen"
+    assert zahlkandi > 0, "Mindesten eine Option sollte auf dem Extrazettel stehen"
     pdf.set_auto_page_break(False, margin=0)
     pdf.add_page()
     pdf.set_font("helvetica", "B", 16)
@@ -171,10 +165,6 @@ def stimmzettelzwei(pdf, kandidaten: list[str], jne: bool, count, extras=[]):
     if (pdf.get_y() > 205):
         return False
     else:
-        try:
-            linkeinfuegen(pdf)
-        except:
-            pass
         return pdf
 
 
@@ -211,7 +201,7 @@ def bericht(kandidaten=[], posten="_________________", jne=False):
     pdf.set_auto_page_break(True, margin=20)
     pdf.add_page()
     # Kopfzeile des Zettels mit Logo, Datum, und zu Abstimmungsgegenstand
-    logo_path = static("StuRa_Logo_sw_RGB.svg")
+    logo_path = finders.find("StuRa_Logo_sw_RGB.svg")
     pdf.image(logo_path, x=100, y=12, h=25)
     pdf.set_font("helvetica", "B", 22)
     pdf.set_y(12)
@@ -219,7 +209,7 @@ def bericht(kandidaten=[], posten="_________________", jne=False):
     pdf.set_y(40)
     pdf.set_font("helvetica", "", size=16)
     pdf.write_html(
-        text="<p style=\"line-height:1.5\"\\>In der Sitzung vom [  &#160&#160  ] <b>" + heutestr() + "</b> [ &#160&#160  ] ______________ wurde vom Studierendenrat in das Gremium / auf den Posten <b>" + posten + "</b> gewählt. Es wurden ______ Stimmzettel abegegeben, davon ______ ungültig. <br> <br>Ergebnis:</p>")
+        text="<p style=\"line-height:1.5\"\\>In der Sitzung vom [  &#160&#160  ] <b>" + heutestr() + "</b> [ &#160&#160  ] ______________ wurde vom Studierendenrat in das Gremium / auf den Posten <b>" + posten + "</b> gewählt. Es wurden ______ Stimmzettel abgegeben, davon waren ______ ungültig. <br> <br>Ergebnis:</p>")
     # Hier wird die tabelle gedruckt
     if jne:
         with pdf.table(text_align="CENTER", col_widths=(3, 1, 1, 1.5, 1.2)) as table:
