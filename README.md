@@ -11,7 +11,7 @@ DEBUG = 'True'
 DBKEY = '.'
 ```
 
-Wenn `DEBUG = 'False'` gesetzt ist, wird mit einer (am anfang leeren) SQL-Lite datei gearbeitet, dafür einmal `migrate` laufen lassen. Dann können Kandidaturen über die Adminschnittstelle mit selbst erstelltem superuser angelegt werden. Der `DBKEY` wird dabei nicht verwendet.
+Wenn `DEBUG = 'True'` gesetzt ist, wird mit einer (am anfang leeren) SQL-Lite datei gearbeitet, dafür einmal `migrate` laufen lassen. Dann können Kandidaturen über die Adminschnittstelle mit selbst erstelltem superuser angelegt werden. Der `DBKEY` wird dabei nicht verwendet.
 
 ### Tatsächlich einrichten
 Wie oben, aber mit `DEBUG = 'False'` und in der `settings.py` eingestelltem Benutzernamen zum `DBKEY`. Die Docker-Files und Compose-Anleitungen wurden von Felix Joeken geschrieben. Alle erforderlichen Pakete sollten in der `requirements.txt` sein, bis auf `gunicorn`. Mit den hier gelieferten `docker-compose`-Plänen wird vor `gunicorn` ein `nginx`-Proxy geschaltet. Static-Files werden mit dem `whitenoise`-Paket gemanagt.
