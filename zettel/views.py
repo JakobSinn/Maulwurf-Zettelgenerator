@@ -73,6 +73,7 @@ def KandiView(request, gremiumwanted=""):
                         stimmen=stimmzettel_eigenschaften["anzahl_stimmen"],
                         jne=is_jnewahl,
                         printbel=stimmzettel_eigenschaften["belehrung_drucken"],
+                        extrabel=stimmzettel_eigenschaften["eigene_belehrung"],
                     ),
                     content_type="application/pdf",
                 )

@@ -15,10 +15,15 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+DJANGO_ENV = os.getenv("DJANGO_ENV", "dev")
+
+if DJANGO_ENV == "prod":
+    load_dotenv(BASE_DIR / ".env.prod")
+else:
+    load_dotenv(BASE_DIR / ".env.dev")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -31,8 +36,10 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 # TODO: #5 Allowed_hosts korrekt einstellen
-ALLOWED_HOSTS = ("*",)
-
+if DJANGO_ENV == "dev":
+    ALLOWED_HOSTS = ["*"]
+else:
+    ALLOWED_HOSTS = ["erdloch.stura.uni-heidelberg.de"]
 # Application definition
 
 INSTALLED_APPS = [
@@ -83,11 +90,11 @@ WSGI_APPLICATION = "maulwurf.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-if DEBUG:
+if DJANGO_ENV == "dev":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": "database.db3",
+            "NAME": BASE_DIR / "db.sqlite3",
         }
     }
 else:
@@ -101,6 +108,7 @@ else:
             "PORT": "3306",
         }
     }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

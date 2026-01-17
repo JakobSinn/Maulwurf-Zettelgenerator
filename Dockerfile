@@ -11,6 +11,14 @@ COPY maulwurf /opt/app/maulwurf/
 COPY zettel /opt/app/zettel/
 COPY manage.py README.md requirements.txt /opt/app/
 
+#Für prod:
+#ENV DJANGO_ENV=prod
+#ENV DEBUG=False
+
+#Für dev:
+ENV DJANGO_ENV=prod
+ENV DEBUG=False
+
 WORKDIR /opt/app
 
 RUN pip install --no-input -r requirements.txt

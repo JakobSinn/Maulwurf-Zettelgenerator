@@ -1,6 +1,9 @@
 services:
   maulwurf-zettelgenerator:
     build: .
+    env:
+    # Ändern für produktionsumgebung
+      - .env.dev
     expose:
       - 8000
     ports:

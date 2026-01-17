@@ -6,25 +6,57 @@ from datetime import datetime
 
 class PlainTextWidget(forms.Widget):
     def render(self, name, value, attrs=None, renderer=None):
-        return mark_safe(value) if value is not None else 'N/A'
+        return mark_safe(value) if value is not None else "N/A"
 
 
 class NameForm(forms.Form):
     first_name = forms.CharField(max_length=50, required=False, label="Vorname")
-    last_name = forms.CharField(max_length=50, required=False, label="Nachname", help_text="Optional")
-    candidate_comment = forms.CharField(max_length=100, label="Anmerkungen", help_text="Wird kleiner gedruckt",
-                                        required=False)
+    last_name = forms.CharField(
+        max_length=50, required=False, label="Nachname", help_text="Optional"
+    )
+    candidate_comment = forms.CharField(
+        max_length=100,
+        label="Anmerkungen",
+        help_text="Wird kleiner gedruckt",
+        required=False,
+    )
 
-    lesung = forms.CharField(max_length=400, widget=PlainTextWidget, required=False, disabled=True, label="Lesung: ")
+    lesung = forms.CharField(
+        max_length=400,
+        widget=PlainTextWidget,
+        required=False,
+        disabled=True,
+        label="Lesung: ",
+    )
 
 
 class StimmzettelEigenschaftenForm(forms.Form):
-    gremien_name = forms.CharField(max_length=200, help_text="Name des zu besetzenden Gremiums oder Postens",
-                                   label="Zetteltitel")
-    anzahl_stimmen = forms.IntegerField(max_value=50, min_value=1, label="Anzahl Stimmen",
-                                        help_text="Gegebenenfalls wird Ja/Nein/Enthaltung verwendet", initial=1)
-    abstimmung_datum = forms.DateField(label="Abstimmungsdatum", initial=datetime.today(), help_text="Format: JJJJ-MM-TT")
-    belehrung_drucken = forms.BooleanField(label="Belehrung drucken", initial=True, required=False)
+    gremien_name = forms.CharField(
+        max_length=200,
+        help_text="Name des zu besetzenden Gremiums oder Postens",
+        label="Zetteltitel",
+    )
+    anzahl_stimmen = forms.IntegerField(
+        max_value=50,
+        min_value=1,
+        label="Anzahl Stimmen",
+        help_text="Gegebenenfalls wird Ja/Nein/Enthaltung verwendet",
+        initial=1,
+    )
+    abstimmung_datum = forms.DateField(
+        label="Abstimmungsdatum (ÜBERPRÜFEN)",
+        initial=datetime.today(),
+        help_text="Format: TT.MM.JJJJ",
+    )
+    belehrung_drucken = forms.BooleanField(
+        label="Standard-belehrung drucken", initial=True, required=False
+    )
+    eigene_belehrung = forms.CharField(
+        max_length=400,
+        help_text="Hinweistext auf dem Zettel, wird wenn ausgefüllt der Belehrung angehängt.",
+        label="Zusätzliche Hinweise",
+        required=False,
+    )
 
 
 NameFormSet = formset_factory(NameForm, extra=2)
