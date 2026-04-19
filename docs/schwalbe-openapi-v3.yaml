@@ -1,0 +1,1621 @@
+---
+openapi: 3.1.1
+info:
+    title: Schwalbe API
+    version: 3.0.0-beta.8
+    description: |-
+        > **🌊 Fluctuating API:** APIv3 is still in beta, and may be subject to breaking change. While the core concepts (commitments, offices, subjects, elections) should be relatively stable, there could be fields added or removed, or occasionally even conceptual changes.
+        >
+        > This situation is of course not ideal, but the best we can do given our personnel resources.
+        >
+        > **If you're building something based on this API, please contact the [corresponding author](https://schwalbe.stura.uni-heidelberg.de/about)**, so we can make sure to not break features you need.
+
+        An API to access data about offices, office holders and elections concerning the Verfasste Studierendenschaft of the Universität Heidelberg.
+
+        ### First steps
+
+        If this is your first time using the API, we recommend two things:
+
+        1. Read the [model documentation](https://gitlab.com/schwalbe-hd/schwalbe/-/blob/master/docs/model.md?ref_type=heads) first. It gives a high level overview over what this API does, and should hopefully make reading these docs a bit easier. It is also short.
+        2. Send a mail to the [corresponding author](https://schwalbe.stura.uni-heidelberg.de/about) to register your API usage. This is completely optional and voluntary, but will help us to notify you if we plan breaking changes to the API (and maybe even consider not doing them, if we know someone else is depending on it).
+
+        ### Etymology
+
+        The German name of this API is “**Sch**nittstelle zur **Wa**h**l**daten**be**reitstellung” (“Interface for election data provision”) or “Schwalbe” (“swallow”, the bird) for short. Believe us, it's funny in German.
+    license:
+        name: MIT License
+        url: https://opensource.org/licenses/MIT
+servers:
+    - url: https://schwalbe.stura.uni-heidelberg.de/api/v3
+      description: StuRa production server for Schwalbe
+    - url: http://localhost:5000/api/v3
+      description: Development server on localhost
+paths:
+    /commitments:
+        summary: Path used to manage the list of commitments.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Commitment"
+                    description: Successful response - returns an array of `Commitment` entities.
+            operationId: getCommitments
+            summary: List all commitments
+            description: |
+                List all `Commitment` objects that are currently relevant, ordered ascendingly by the date the commitment was made.
+
+                ## Order
+
+                The earliest commitment will appear as first entry in the list. This corresponds to the voting slip, where the earliest candidacy will also be listed on top. Note that we apply this order globally across all commitments (because it is simpler to do and because we can, after all, time is a global concept), but the order is only relevant for commitments that have an election, within that praticular election – commitments from different elections (or without an election) will never be placed on the same voting slip, so it
+                doesn't really matter which one was made first.
+
+                ## Relevance
+
+                A commitment can only be relevant if it meets both of the following criteria:
+
+                * **It is confirmed.** If the commitment was made via a web form, this allows the entrant to revert their decision by not clicking the confirmation link in the mail they receive after filling out the form.
+                * **The office period start and end are set.** Otherwise, the following rules cannot work properly.
+
+                Furthermore, it must also meet at least one of the following criteria. Then (and only then) is a commitment relevant.
+
+                * **Its enterStatus is one of {`"regular"`, `"stepped_in"`, `"substitute"`, `"resigned"`, `"unelected"`, `"unenrolled"`} and today ≤ `office.end`**.
+                    * Reason: We want to display all office holders during their office period, as soon as we know that they will be office holders.
+                * **Its enterStatus is one of {`"pending"`, `"denied"`} and today ≤ min(`office.start` + 2 months, `office.end`)**.
+                    * Reason: We want to display all candidates before an election, and all candidates (elected and non-elected) for a while after the election. However, we redact them earlier for privacy reasons, as they cease to be relevant after a while.
+    /commitments/{uuid}:
+        summary: Path used to manage a single commitment.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Commitment"
+                    description: Successful response - returns a single `Commitment`.
+                "404":
+                    description: |
+                        Error response. Might appear for two reasons:
+
+                        1. There exists no commitment with this uuid
+                        2. There exists a commitment with this uuid, but it is not relevant.
+
+                        For a detailed explanation of the relevance criteria, see the `/commitments` endpoint.
+            operationId: getCommitment
+            summary: Get a commitment
+            description: Get a single instance of a `Commitment`, if it is relevant.
+        parameters:
+            - examples:
+                  a_uuid:
+                      value: eda991d4-02eb-452b-89db-f3bacc7d2e37
+              name: uuid
+              description: A unique identifier for a commitment.
+              schema:
+                  type: string
+              in: path
+              required: true
+            - $ref: "#/components/parameters/dereference"
+    /persons/self:
+        summary: Path used to manage oneself.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Person"
+                    description: Successful response - returns a single `Person`.
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "404":
+                    description: |
+                        Error response. Might appear for two reasons:
+
+                        1. The current user has no Uni ID set
+                        2. There is no person with the Uni ID of the user
+            operationId: getSelf
+            summary: Get self
+            description: Get the single `Person` instance associated with the current user. Authorization is required.
+            security:
+                - secretBearerAuth: []
+    /certifications/{id}:
+        summary: Path used to manage a commitment certification
+        description: ""
+        get:
+            operationId: getCertification
+            summary: Get a commitment certification
+            description: |
+                Return the latest version of the commitment certification with the given Certification ID in PDF format.
+            responses:
+                "200":
+                    description: A PDF file containing a commitment certification.
+                    content:
+                        application/pdf:
+                            schema:
+                                type: string
+                                format: binary
+                "400":
+                    description: The certificationId parameter is not well-formed.
+                "404":
+                    description: There is no such certification
+            parameters:
+                - name: id
+                  description: A Certification ID
+                  schema:
+                      type: string
+                  in: path
+                  required: true
+                - in: query
+                  name: language
+                  schema:
+                      type: string
+                      enum: ["de", "en"]
+                      default: "de"
+                  description: The language of the certification.
+    /certification-requests:
+        summary: Path used to manage certification requests.
+        description: ""
+        post:
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CertificationRequest"
+                        examples:
+                            request_certifications:
+                                value:
+                                    uniId: jb007
+            responses:
+                "201":
+                    description: The certifications have been requested. The application will asynchronously process the request and send them via mail.
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
+            operationId: createCertificationRequest
+            summary: Cerate commitment certification request
+            description: Request all commitment certifications for the person with the given Uni ID to be sent via mail to that person.
+    /elections:
+        summary: Path used to manage the list of elections.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Election"
+                            examples:
+                                some_elections:
+                                    value:
+                                        - uuid: d7139347-552f-4f12-a232-36a884ba08b6
+                                          officeUuid: cb494559-235a-4991-b413-dfcacd676a97
+                                          legislativePeriod:
+                                              start: "2022-04-01"
+                                              end: "2023-03-31"
+                                          seats: 7
+                                          eligibleVoters: 260
+                                          ballotsCast: 90
+                                          validBallots: 89
+                                          votingMethod: Mehrheitswahl per Online-Wahl
+                                          comment: null
+                                          electionPeriod:
+                                              start: "2022-01-24T11:00:00+00:00"
+                                              end: "2022-01-31T11:00:00+00:00"
+                                          result: null
+                                          resultPublicationDate: "2022-02-05"
+                                          candidacyEnd: "2022-01-16T23:00:00+00:00"
+                                          genoliveVotingPoint:
+                                              id: TFFMC7UTTVMXWQXTXSDZ9JN5SX9AEHTQEE5RX57JJQUDJCPVK2EPZ2KN3DC
+                                              votingId: 7ZR79FA5ELCRHY7SKWW4YYLYDFDRHAPR4U3PSNSAKPFDDS3P4WKJNHF5ZF4
+                                          ballotVerification: null
+                                          ballotVerifiedAt: null
+                                          $type: Election
+                                        - uuid: 254af947-4ec5-4516-9054-b45b909b6c0d
+                                          legislativePeriod:
+                                              start: "2022-04-01"
+                                              end: "2024-03-31"
+                                          officeUuid: 1cc64ed7-7a5e-4eae-b809-6db5b69d8949
+                                          ballotsCast: 5
+                                          eligibleVoters: 9
+                                          validBallots: 5
+                                          seats: 3
+                                          electionPeriod:
+                                              start: "2022-01-24T11:00:00+00:00"
+                                              end: "2022-01-31T11:00:00+00:00"
+                                          votingMethod: Mehrheitswahl per Online-Wahl
+                                          comment: null
+                                          result:
+                                              - commitmentUuid: b404420d-f332-4b11-a8e5-3e5b4a6a89d1
+                                                votes: null
+                                              - commitmentUuid: 247501f5-37e9-4e9a-b04e-3a570fa57782
+                                                votes: null
+                                              - commitmentUuid: f59d73fa-c472-4d71-8d53-543397fb7299
+                                                votes: null
+                                              - commitmentUuid: 617bf4e1-8ea4-430f-aa66-d9583bf348bc
+                                                votes: null
+                                          resultPublicationDate: "2022-02-05"
+                                          candidacyEnd: "2022-01-16T23:00:00+00:00"
+                                          genoliveVotingPoint: null
+                                          ballotVerification: null
+                                          ballotVerifiedAt: null
+                                          $type: Election
+                                        - uuid: 9a8b9b13-f4b4-47f1-a56f-84d3275cac2b
+                                          officeUuid: 3db20f04-cb36-4834-bc52-ceb86fd4617e
+                                          legislativePeriod:
+                                              start: "2024-10-01"
+                                              end: "2025-09-30"
+                                          seats: 1
+                                          eligibleVoters: 472
+                                          ballotsCast: 35
+                                          validBallots: 34
+                                          votingMethod: Mehrheitswahl per Online-Wahl
+                                          comment: null
+                                          electionPeriod:
+                                              start: "2023-07-01T08:00:00+00:00"
+                                              end: "2023-07-18T10:00:00+00:00"
+                                          result:
+                                              - commitmentUuid: e49a1563-e2c0-4d4f-87b7-abd1fad56707
+                                                votes: 34
+                                              - commitmentUuid: cbd3d329-dce5-4911-8abe-7dc85dfb8983
+                                                votes: 30
+                                          resultPublicationDate: "2023-08-01"
+                                          candidacyEnd: "2023-05-10T21:59:00+00:00"
+                                          genoliveVotingPoint: null
+                                          ballotVerification: null
+                                          ballotVerifiedAt: null
+                                          $type: Election
+                                        - uuid: c5acd8fb-e141-428b-aa2a-0fae1b8d1eee
+                                          officeUuid: af18449c-239d-4fc9-8976-b04c9809ac4f
+                                          legislativePeriod:
+                                              start: "2024-04-01"
+                                              end: "2025-03-31"
+                                          seats: 3
+                                          eligibleVoters: 280
+                                          ballotsCast: 37
+                                          validBallots: null
+                                          votingMethod: Mehrheitswahl per Online-Wahl
+                                          comment: null
+                                          electionPeriod:
+                                              start: "2024-01-22T11:00:00+00:00"
+                                              end: "2024-01-29T11:00:00+00:00"
+                                          result: null
+                                          resultPublicationDate: null
+                                          candidacyEnd: "2024-01-14T23:00:00+00:00"
+                                          genoliveVotingPoint: null
+                                          ballotVerification: null
+                                          ballotVerifiedAt: null
+                                          $type: Election
+                    description: Successful response - returns an array of `Election` entities.
+            operationId: getElections
+            summary: List all elections
+            description: |
+                List all `Election` entities ever recorded.
+
+                Some of the result data is only shown when it is relevant, and otherwise redacted for privacy reasons.
+
+                ## Relevance
+
+                * **When today > `legislativePeriod.end`, the result is irrelevant (and `result` therefore set to `null`).**
+                    * Reason: As soon as the legislative period is over, all commitments become irrelevant and are not shown. Therefore it also doesn't make much sense to show commitment votes referencing (seemingly) non-existent commitments.
+                * **When today > min(`legislativePeriod.start` + 2 months, `legislativePeriod.end`), the vote counts are irrelevant (and `votes` therefore set to `null`).**
+                    * Reason: We want to protect the candidates' privacy by not showing the exact number of votes longer than necessary.
+        post:
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/Election"
+                        examples:
+                            a_new_election:
+                                value:
+                                    - officeUuid: 0351b26b-4e70-4bfb-8679-db359478600b
+                                      legislativePeriod:
+                                          start: "2024-04-01"
+                                          end: "2025-03-31"
+                                      legacyLegislativePeriodName: "20232,20241"
+                                      seats: 7
+                                      eligibleVoters: 940
+                                      votingMethod: Mehrheitswahl per Online-Wahl
+                                      comment: Nachwahl
+                                      electionPeriod:
+                                          start: "2024-01-22T11:00:00+00:00"
+                                          end: "2024-01-29T11:00:00+00:00"
+                                      candidacyEnd: "2024-01-15T22:59:00+00:00"
+                required: true
+            responses:
+                "201":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Election"
+                            examples:
+                                the_newly_created_election:
+                                    value:
+                                        - uuid: f0bb222c-7e5e-48d6-9d3a-171d47518b99
+                                          officeUuid: 0351b26b-4e70-4bfb-8679-db359478600b
+                                          legislativePeriod:
+                                              start: "2024-04-01"
+                                              end: "2025-03-31"
+                                          seats: 7
+                                          eligibleVoters: 940
+                                          ballotsCast: null
+                                          validBallots: null
+                                          votingMethod: Mehrheitswahl per Online-Wahl
+                                          comment: Nachwahl
+                                          electionPeriod:
+                                              start: "2024-01-22T11:00:00+00:00"
+                                              end: "2024-01-29T11:00:00+00:00"
+                                          result: null
+                                          resultPublicationDate: null
+                                          candidacyEnd: "2024-01-15T22:59:00+00:00"
+                                          $type: Election
+                    description: Election was successfully created. The created election is returned so the client can store its uuid for future reference.
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "400":
+                    $ref: "#/components/responses/BadRequestError"
+            security:
+                - secretBearerAuth: []
+            operationId: createElection
+            summary: Create an election
+            description: Create and store a new `Election` instance.
+    /elections/{uuid}:
+        summary: Path used to manage a single election.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Election"
+                    description: Successful response - returns a single `Election`.
+                "404":
+                    description: No election with the given uuid was found.
+            operationId: getElection
+            summary: Get an election
+            description: Get a single instance of a `Election`.
+        delete:
+            responses:
+                "204":
+                    description: The election was successfully deleted.
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "404":
+                    description: No such election exists.
+            operationId: deleteElection
+            summary: Delete an election
+            description: |-
+                Delete an election.
+
+                Authentication is required to delete an election.
+            security:
+                - secretBearerAuth: []
+        parameters:
+            - examples:
+                  a_uuid:
+                      value: 254af947-4ec5-4516-9054-b45b909b6c0d
+              name: uuid
+              description: A unique identifier for an election.
+              schema:
+                  type: string
+              in: path
+              required: true
+            - $ref: "#/components/parameters/dereference"
+    /offices:
+        summary: Path used to manage the list of offices.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Office"
+                            examples:
+                                some_offices:
+                                    value:
+                                        - uuid: 1cc64ed7-7a5e-4eae-b809-6db5b69d8949
+                                          name: Fachrat Psychologie – Hochschullehrer*innen
+                                          kindUuid: 97ade844-4b84-4edb-9e27-344ada2a7d6c
+                                          subjectUuid: b7c06ca6-0c8a-491f-997f-56db5fbbabc6
+                                          officeHoldKindUuid: d336001f-5b05-47a7-ae09-3f97feeca449
+                                          parentUuid: 4d7b693a-a741-46fd-8d19-a42fe7b9d03c
+                                          $type: Office
+
+                                        - uuid: 4d7b693a-a741-46fd-8d19-a42fe7b9d03c
+                                          name: Fachrat Psychologie
+                                          kindUuid: cb787a85-16c7-4c79-a137-7124dd8f4a64
+                                          subjectUuid: b7c06ca6-0c8a-491f-997f-56db5fbbabc6
+                                          officeHoldKindUuid:
+                                          parentUuid: null
+                                          $type: Office
+
+                                        - uuid: b4b93241-e22f-43bb-815b-9eb03d3dad80
+                                          name: Fachrat Psychologie – Studierende
+                                          kindUuid: 97ade844-4b84-4edb-9e27-344ada2a7d6c
+                                          subjectUuid: b7c06ca6-0c8a-491f-997f-56db5fbbabc6
+                                          officeHoldKindUuid: 7b2e033c-f9e4-4943-a544-1ff2a832fe32
+                                          parentUuid: 4d7b693a-a741-46fd-8d19-a42fe7b9d03c
+                                          $type: Office
+
+                                        - uuid: a552ee28-e8a4-411c-bc94-13e686d9c72b
+                                          name: Kooperation Erziehung und Bildung & Psychologie
+                                          kindUuid: b529e04d-a228-45c3-a01d-ae29a0d53c78
+                                          subjectUuid: null
+                                          officeHoldKindUuid: 7b2e033c-f9e4-4943-a544-1ff2a832fe32
+                                          parentUuid: cc8b1286-a233-450c-9a0b-0e0a2ceac47c
+                                          $type: Office
+
+                                        - uuid: 24a3a145-edd2-46cc-8494-3bbdb4248e5f
+                                          name: Fachschaftsrat Geographie
+                                          kindUuid: 1fdb499b-5147-40d3-8dba-f2e7910f8b28
+                                          subjectUuid: 7bb6d574-3142-446c-85bd-3a43acc9fa3c
+                                          holderKindUuid: 7b2e033c-f9e4-4943-a544-1ff2a832fe32
+                                          parentUuid: null
+                                          $type: Office
+
+                    description: Successful response - returns an array of `Office` entities.
+            operationId: getOffices
+            summary: List all offices
+            description: |-
+                List all `Office` entities.
+
+                Several offices (e.g. “Fachrat Psychologie – Studierende”, “Fachrat Psychologie – Hochschullehrer*innen” etc.) belong together. This is modeled by them having another office (“Fachrat Psychologie”) as parent.
+
+                Authenticated requests will receive more detailed responses.
+            security:
+                - {}
+                - secretBearerAuth: []
+        parameters:
+            - $ref: "#/components/parameters/dereference"
+    /offices/{uuid}:
+        summary: Path used to manage a single office.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Office"
+                    description: Successful response - returns a single `Office`.
+                "404":
+                    description: No office with the given uuid exists.
+            operationId: getOffice
+            summary: Get an office
+            description: |-
+                Get a single instance of an `Office`.
+
+                Authenticated requests will receive more detailed responses.
+            security:
+                - {}
+                - secretBearerAuth: []
+        parameters:
+            - examples:
+                  a_uuid:
+                      value: 03dd404b-c33b-4af1-9d28-1b2391b29fc6
+              name: uuid
+              description: A unique identifier for an `Office`.
+              schema:
+                  type: string
+              in: path
+              required: true
+            - $ref: "#/components/parameters/dereference"
+    /subjects:
+        summary: Path used to manage the list of subjects.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/Subject"
+                            examples:
+                                some_subjects:
+                                    value:
+                                        - name: Ethnologie
+                                          uuid: 2f335992-27ff-4020-aa76-2bd4e92685e7
+                                          $type: Subject
+
+                                        - name: Ostasiatische Kunstgeschichte
+                                          uuid: 8e07b0fa-793a-451f-9462-db2c6269b737
+                                          $type: Subject
+
+                                        - name: Europäische Kunstgeschichte
+                                          uuid: dbcb83a0-4c3e-4d59-8dbc-4afc62fa842e
+                                          $type: Subject
+
+                                        - name: Übersetzen und Dolmetschen
+                                          uuid: a9ad51fb-85d1-401e-b085-b724509095b1
+                                          $type: Subject
+
+                    description: Successful response - returns an array of `Subject` entities.
+            operationId: getSubjects
+            summary: List all subjects
+            description: |-
+                List all `Subject` entities we know of. Might not be all, but should be all relevant to day-to-day operations of the Verfasste Studierendenschaft.
+    /subjects/{uuid}:
+        summary: Path used to manage a single subject.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Subject"
+                    description: Successful response - returns a single `Subject`.
+                "404":
+                    description: No subject with the given uuid was found.
+            operationId: getSubject
+            summary: Get a subject
+            description: Get a single instance of a `Subject`.
+        parameters:
+            - examples:
+                  a_uuid:
+                      value: c83269fe-33d9-446f-a9cf-85de62a338d8
+              name: uuid
+              description: A unique identifier for a `Subject`.
+              schema:
+                  type: string
+              in: path
+              required: true
+    /office-kinds:
+        summary: Path used to manage the list of office kinds.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/OfficeKind"
+                            examples:
+                                some_office_kinds:
+                                    value:
+                                        - uuid: 1fdb499b-5147-40d3-8dba-f2e7910f8b28
+                                          name: Fachschaftsrat
+                                          $type: OfficeKind
+
+                                        - uuid: cb787a85-16c7-4c79-a137-7124dd8f4a64
+                                          name: Fachrat
+                                          $type: OfficeKind
+
+                                        - uuid: 97ade844-4b84-4edb-9e27-344ada2a7d6c
+                                          name: Fachratspartition
+                                          $type: OfficeKind
+
+                                        - uuid: 00b325e6-ccc9-46df-aab2-3a364bd22a00
+                                          name: Listenvertreter
+                                          $type: OfficeKind
+
+                                        - uuid: 82f7f661-a4b5-4a4b-aa9b-3444b1c44aca
+                                          name: Fachschaftsvertreter
+                                          $type: OfficeKind
+
+                                        - uuid: 1bdf19de-06ff-47be-8975-f5a772279d66
+                                          name: Kommission
+                                          $type: OfficeKind
+
+                                        - uuid: 75e73c8a-701b-4aeb-ae9e-329c96dc2cb1
+                                          name: Fachschafts-Finanzbeauftragter
+                                          $type: OfficeKind
+                    description: Successful response - returns an array of `OfficeKind` entities.
+            operationId: getOfficeKinds
+            summary: List all office kinds
+            description: List all `OfficeKind` entities.
+    /office-kinds/{uuid}:
+        summary: Path used to manage a single office kind.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/OfficeKind"
+                    description: Successful response - returns a single `OfficeKind`.
+                "404":
+                    description: No office kind with the given uuid was found.
+            operationId: getOfficeKind
+            summary: Get an office kind
+            description: Get a single instance of an `OfficeKind`.
+        parameters:
+            - examples:
+                  a_uuid:
+                      value: 1fdb499b-5147-40d3-8dba-f2e7910f8b28
+              name: uuid
+              description: A unique identifier for an `OfficeKind`.
+              schema:
+                  type: string
+              in: path
+              required: true
+    /office-holder-kinds:
+        summary: Path used to manage the list of office holder kinds.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/OfficeHolderKind"
+                            examples:
+                                some_office_holder_kinds:
+                                    value:
+                                        - uuid: 7b2e033c-f9e4-4943-a544-1ff2a832fe32
+                                          name: Studierende
+                                          $type: OfficeHolderKind
+
+                                        - uuid: d336001f-5b05-47a7-ae09-3f97feeca449
+                                          name: HochschullehrerInnen
+                                          $type: OfficeHolderKind
+
+                                        - uuid: 69025035-04c9-4b25-9fe3-efa949420d96
+                                          name: Akademische MitarbeiterInnen
+                                          $type: OfficeHolderKind
+
+                                        - uuid: ae25b3a8-000d-418d-8080-026c493765cd
+                                          name: MitarbeiterInnen in Administration und Technik
+                                          $type: OfficeHolderKind
+
+                    description: Successful response - returns an array of `OfficeHolderKind` entities.
+            operationId: getOfficeHolderKinds
+            summary: List all office holder kinds
+            description: List all `OfficeHolderKind` entities.
+    /office-holder-kinds/{uuid}:
+        summary: Path used to manage a single office holder kind.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/OfficeHolderKind"
+                    description: Successful response - returns a single `OfficeHolderKind`.
+                "404":
+                    description: No office holder kind with the given uuid was found.
+            operationId: getOfficeHolderKind
+            summary: Get an office holder kind
+            description: Get a single instance of an `OfficeHolderKind`.
+        parameters:
+            - examples:
+                  a_uuid:
+                      value: 7b2e033c-f9e4-4943-a544-1ff2a832fe32
+              name: uuid
+              description: A unique identifier for an `OfficeHolderKind`.
+              schema:
+                  type: string
+              in: path
+              required: true
+    /named-durations:
+        summary: Path used to manage the list of named durations.
+        get:
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: "#/components/schemas/NamedDuration"
+            operationId: getNamedDurations
+            summary: List all named durations
+    /named-durations/{uuid}:
+        summary: Path used to manage a single named duration.
+        get:
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/NamedDuration"
+                "404":
+                    description: No named duration with the given uuid was found.
+            operationId: getNamedDuration
+            summary: Get a named duration
+        parameters:
+            - examples:
+                  a_uuid:
+                      value: 7b2e033c-f9e4-4943-a544-1ff2a832fe32
+              name: uuid
+              description: A unique identifier for a `NamedDuration`.
+              schema:
+                  type: string
+              in: path
+              required: true
+    /version:
+        summary: Path used to get details about the version of this application.
+        description: ""
+        get:
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApplicationVersion"
+                    description: Successful response - returns one `ApplicationVersion` entity.
+            operationId: getApplicationVersion
+            summary: Get the application version
+            description:
+                Get the (singleton) `ApplicationVersion` instance describing the
+                version of this app.
+    /keys:
+        summary: Path used to manage the list of keys (effectively only there to create one).
+        description: ""
+        post:
+            requestBody:
+                content: {}
+                required: true
+            responses:
+                "201":
+                    description: A key has been created (i.e. the presented credentials were accepted)
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Key"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+            security:
+                - userPasswordAuth: []
+            operationId: createKey
+            summary: Create a key
+            description: |-
+                Create a new key whose secret can be used to authenticate against all endpoints requiring `secretBearerAuth`.
+
+                Of course you have to be authenticated to get such a key because we don't want to allow arbitrary persons to use protected endpoints.
+                Therefore, this endpoint itself also requires authentication, however, not with `secretBearerAuth` (because where would you get that
+                secret from) but with `userPasswordAuth` (i.e. with username and password).
+
+                The body of the `POST` request is empty, because the server will generate all fields of the key.
+    /keys/{uuid}:
+        summary: Path used to manage a single key (effectively only there to delete one).
+        delete:
+            responses:
+                "204":
+                    description: The key was successfully deleted (= revoked).
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "404":
+                    description: No such key exists (or at least none that can be deleted by the current user).
+            operationId: deleteKey
+            summary: Delete a key
+            description: |-
+                Delete (= revoke) a key. This means the secret can no longer be used to authenticate when `secretBearerAuth` is required.
+
+                Authentication is required to revoke a key.
+            security:
+                - secretBearerAuth: []
+        parameters:
+            - name: uuid
+              description: The unique identifier of the key.
+              schema:
+                  type: string
+              in: path
+              required: true
+    /users:
+        summary: Path used to manage the list of users (effectively only there to create one).
+        description: ""
+        post:
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/User"
+                        examples:
+                            a_new_user:
+                                value:
+                                    - uuid: 8b913e0f-74d7-4b2a-92a6-13e9993551ae
+                                      name: alice
+                                      password: hunter2
+                required: true
+            responses:
+                "201":
+                    description: A user has been created
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/User"
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+            security:
+                - secretBearerAuth: []
+            operationId: createUser
+            summary: Create a user
+            description: |-
+                Create a user.
+
+                You have to be authenticated to create a user, using `secretBearerAuth` (for which you need `userPasswordAuth`, so the first user
+                can't be created via the API).
+    /users/{uuid}:
+        summary: Path used to manage a single user (effectively only there to delete one).
+        delete:
+            responses:
+                "204":
+                    description: The user was successfully deleted.
+                "401":
+                    $ref: "#/components/responses/UnauthorizedError"
+                "404":
+                    description: No such user exists.
+            operationId: deleteUser
+            summary: Delete a user
+            description: |-
+                Delete a user. This will also automatically revoke all of this user's active keys.
+
+                Authentication is required to delete a user.
+            security:
+                - secretBearerAuth: []
+        parameters:
+            - name: uuid
+              description: The unique identifier of the user.
+              schema:
+                  type: string
+              in: path
+              required: true
+security: []
+components:
+    schemas:
+        Person:
+            title: Person
+            description: |-
+                A person known to the application. Unlike the user, which is a technical object, this is a business object. Most of the fields are only shown for authorized users.
+            type: object
+            properties:
+                firstName:
+                    description: The first name, or first names (probably separated with spaces, or with dashes, or with whatever the first name of the person is separated in reality)
+                    type: [string, "null"]
+                lastName:
+                    description: The last name, or last names (again, probably separated with spaces)
+                    type: [string, "null"]
+                birthDate:
+                    type: [string, "null"]
+                    format: date
+                uniId:
+                    type: [string, "null"]
+                matriculationNumber:
+                    type: [string, "null"]
+                email:
+                    type: [string, "null"]
+                    format: idn-email
+                street:
+                    type: [string, "null"]
+                postalCode:
+                    type: [string, "null"]
+                city:
+                    type: [string, "null"]
+                addressDetails:
+                    type: [string, "null"]
+                phoneNumber:
+                    type: [string, "null"]
+                uuid:
+                    type: string
+                    format: uuid
+                createdOn:
+                    type: [string, "null"]
+                    format: date-time
+                lastTouchedOn:
+                    type: [string, "null"]
+                    format: date-time
+                $type:
+                    type: string
+                    readOnly: true
+                    const: Person
+            required:
+                - firstName
+                - lastName
+                - $type
+            example:
+                firstName: Max
+                lastName: Mustermann
+                $type: Person
+        Commitment:
+            title: Commitment
+            description: |
+                Represents a person's (potential or actual) commitment to an office in a certain office period.
+            required:
+                - uuid
+                - officeUuid
+                - officePeriod
+                - electionUuid
+                - enterMethod
+                - enterStatus
+                - exitStatus
+                - confirmed
+                - verified
+                - viaOfficeUuid
+                - isPrivate
+                - $type
+            type: object
+            properties:
+                uuid:
+                    description: Uniquely identifies the commitment
+                    type: string
+                    readOnly: true
+                    format: uuid
+                person:
+                    $ref: "#/components/schemas/Person"
+                    description: |-
+                        The person who commits themselves.
+
+                        If isPrivate is set, this is only included for authenticated requests.
+                    properties:
+                        firstName:
+                            type: string
+                        lastName:
+                            type: string
+                officeUuid:
+                    description: Uuid of the office the person commits themselves to
+                    type: string
+                    format: uuid
+                officePeriod:
+                    $ref: "#/components/schemas/LocalDatePeriod"
+                    description: The office period (“Amtszeit”) is the timespan for which the commitment is made
+                electionUuid:
+                    description: If an election is required for this office, person and office term, this is it
+                    type: [string, "null"]
+                    format: uuid
+                confirmed:
+                    description: |-
+                        This means the commitment's entrant has confirmed (“bestätigt”) the intent to commit.
+
+                        When the commitment has an election (i.e., represents a candidacy), confirmation is done by the candidate
+                        who has to click on a link in a mail sent to the university email.
+
+                        When the commitment does not have an election, confirmation is done automatically as part of the data entry process.
+
+                        A confirmed commitment means for us:
+
+                        - The person has made their intentions to commit very clear.
+                        - The person is somehow associated with the university and not just a random stranger from the internet.
+                    type: boolean
+                verified:
+                    description: |-
+                        This means the election committee (“Wahlausschuss”) has manually verified (“geprüft“) the commitment.
+
+                        A verified commitment means for us (among other things):
+
+                        * The person is eligible to commit to the specified office.
+                    type: boolean
+                enterMethod:
+                    description: |-
+                        How a person gains the rights to hold an office.
+
+                        Note that this does not say whether a person actually holds an office, consider `Commitment#enterStatus` and `Commitment#officePeriod` for that. The following description assumes for a person indeed holds an office:
+
+                        - `"election"`: Person was voted into office
+                        - `"appointment"`: Person was appointed (without election)
+                        - `"provisional"`: Person serves in this office provisionally ("kommissarisch"), e.g. a person might remain in office after their regular office period if no new elections took place in time
+                    enum:
+                        - election
+                        - appointment
+                        - provisional
+                    type: string
+                enterStatus:
+                    description: |-
+                        Whether (and how) a person successfully entered office.
+
+                        ## Holding office
+
+                        - `"regular"`: Person holds office for the reason given by `Commitment#enterMethod`
+                        - `"stepped_in"`: Person who was a substitute stepped in because someone resigned
+
+                        ## Not holding office
+
+                        - `"substitute"`: Person would hold the office if someone resigned
+                        - `"denied"`: Person did not clear the requirements given by `Commitment#enterMethod` (e.g. was not elected/appointed) i.e. does not and will not hold the office
+
+                        ## Before election
+
+                        - `"pending"`: Person is being considered for office (e.g. has candidated for election, or expressed their wish to enter office to the appointing body)
+                        - `"missed_deadline"`: Person has missed a deadline (e.g. candidated for an election too late, election is not yet completed), commitment might not be considered
+                        - `"withdrawn"`: Person withdrew their wish to enter office
+                    enum:
+                        - pending
+                        - missed_deadline
+                        - withdrawn
+                        - regular
+                        - substitute
+                        - stepped_in
+                        - denied
+                    type: string
+                exitStatus:
+                    description: |-
+                        The reason why a person's office period ended.
+
+                        Office periods are limited to a specific timeframe. By default (if `exitStatus` is `null`), a person automatically leaves office once their office period is over. Additionally, several reasons can cause a person to leave office prematurely.
+
+                        - `"resigned"`: Person formerly held the office, but resigned
+                        - `"unelected"`: Person was previously elected, but has been unelected (by another voting), cannot hold office now
+                        - `"unenrolled"`: Person is not a part of the subject anymore (e.g. because they were exmatriculated, or changed subjects), cannot hold office
+                        - `null`: Person left office because their office period ended (or did not leave yet if their office period is not over)
+                    enum:
+                        - resigned
+                        - unelected
+                        - unenrolled
+                    type: [string, "null"]
+                viaOfficeUuid:
+                    description: If the person came into the given office via another office (e.g. a political list), this office is referenced here.
+                    type: [string, "null"]
+                    format: uuid
+                isPrivate:
+                    description: Indicates that personal data is not publically available, e.g. for “Finanzverantwortliche”
+                    type: boolean
+                $type:
+                    type: string
+                    readOnly: true
+                    const: Commitment
+            example:
+                uuid: eda991d4-02eb-452b-89db-f3bacc7d2e37
+                person:
+                    firstName: Tim
+                    lastName: Kühn
+                officeUuid: cb690905-2b41-4e5c-bf51-8c512c12790d
+                officePeriod:
+                    start: 2023-10-01
+                    end: 2024-09-30
+                electionUuid: 2e7c242a-bb35-41ea-b8b1-9855d895db8f
+                enterMethod: election
+                enterStatus: regular
+                exitStatus: null
+                confirmed: true
+                verified: true
+                role: null
+                viaOfficeUuid: null
+                $type: Commitment
+        Election:
+            title: Election
+            description: An election to an office (“Wahl zu einem Amt”) for a legislative period (“für eine Amtszeit”)
+            type: object
+            required:
+                - uuid
+                - officeUuid
+                - legislativePeriod
+                - eligibleVoters
+                - ballotsCast
+                - seats
+                - validBallots
+                - electionPeriod
+                - votingMethod
+                - result
+                - comment
+                - resultPublicationDate
+                - candidacyEnd
+                - genoliveVotingPoint
+                - ballotVerification
+                - ballotVerifiedAt
+                - $type
+            properties:
+                uuid:
+                    type: string
+                    readOnly: true
+                    format: uuid
+                officeUuid:
+                    description: The uuid of the office (“Amt”) which is elected
+                    type: string
+                    format: uuid
+                legislativePeriod:
+                    $ref: "#/components/schemas/LocalDatePeriod"
+                    description: The legislative period (“Legislaturperiode”) is the timespan in which the office will consist of the elected candidates
+                legacyLegislativePeriodName:
+                    type: string
+                    description:
+                        A legacy name (that might not be unique) given to the legislative period.
+                        Only needed for backwards compatibility reasons when creating a new instance,
+                        not accessible or used on API or UI anywhere else.
+                    writeOnly: true
+                seats:
+                    description: |-
+                        The number of seats (“Plätze”) is the number of persons that can be elected to make up the office.
+                        In some cases, it is only determined after the election has already completed.
+                    type: [integer, "null"]
+                eligibleVoters:
+                    description: The number of persons that are allowed to vote in the election (“Anzahl Wahlberechtigte”)
+                    type: [integer, "null"]
+                ballotsCast:
+                    description: The number of persons that voted in the election (“Anzahl abgegebene Stimmzettel”)
+                    type: [integer, "null"]
+                    readOnly: true
+                validBallots:
+                    description:
+                        The number of persons that voted (correctly) in the election
+                        (“Anzahl gültiger Stimmzettel”). Always less than or equal to `ballotsCast`.
+                    type: [integer, "null"]
+                    readOnly: true
+                votingMethod:
+                    description: The method used to perform the election
+                    type: [string, "null"]
+                comment:
+                    description:
+                        An optional human-readable comment (e.g. “Nachwahl”) that could
+                        e.g. be shown next to the election name
+                    type: [string, "null"]
+                electionPeriod:
+                    description: The timespan during which the election is held (“Wahlzeitraum”).
+                    oneOf:
+                        - $ref: "#/components/schemas/InstantPeriod"
+                        - type: "null"
+                result:
+                    description: The result of the election, i.e. commitments together with votes. _Ordered_ array (usually ranked by the votes, in case of a tie a random, but fixed order is chosen; this means the order of this particular array is relevant).
+                    type: array
+                    readOnly: true
+                    oneOf:
+                        - items:
+                            $ref: "#/components/schemas/CommitmentVotes"
+                        - type: "null"
+                resultPublicationDate:
+                    format: date
+                    description: The local date the results were published
+                    type: [string, "null"]
+                    readOnly: true
+                candidacyEnd:
+                    format: date-time
+                    description: The timestamp after which no new candidacies are accepted
+                    type: [string, "null"]
+                genoliveVotingPoint:
+                    oneOf:
+                        - $ref: "#/components/schemas/VotingPoint"
+                        - type: "null"
+                    description: The Genolive voting point this election is associated with, if any
+                ballotVerification:
+                    type: [string, "null"]
+                    description: The result of the last ballot verification (if any)
+                    enum:
+                        - passed
+                        - failed
+                ballotVerifiedAt:
+                    format: date-time
+                    description: The timestamp at which the ballot verification was performed
+                    type: [string, "null"]
+                $type:
+                    type: string
+                    readOnly: true
+                    const: Election
+            example:
+                uuid: 254af947-4ec5-4516-9054-b45b909b6c0d
+                legislativePeriod:
+                    start: "2022-04-01"
+                    end: "2024-03-31"
+                officeUuid: 1cc64ed7-7a5e-4eae-b809-6db5b69d8949
+                ballotsCast: 5
+                eligibleVoters: 9
+                validBallots: 5
+                seats: 3
+                electionPeriod:
+                    start: "2022-01-24T11:00:00+00:00"
+                    end: "2022-01-31T11:00:00+00:00"
+                votingMethod: Mehrheitswahl per Online-Wahl
+                comment: null
+                result:
+                    - commitmentUuid: efbf0557-7c23-4eea-a562-796d5c682c2f
+                      votes: 5
+                    - commitmentUuid: 40ad7219-088d-420a-a0fd-d3b98b9b017e
+                      votes: 5
+                    - commitmentUuid: 37c326e3-f7ee-4f1d-8af2-4d802707f763
+                      votes: 4
+                    - commitmentUuid: fee21404-b81f-492d-936b-1069c11ec34f
+                      votes: 3
+                resultPublicationDate: "2022-02-05"
+                candidacyEnd: "2022-01-16T23:00:00+00:00"
+                genoliveVotingPoint:
+                    id: U527AC9ZPEYHFU5X2MH3X5HKQ29LXVPWADMERU5H4YLSFURVMS9JMVQ5MJ7
+                    votingId: AJ4JZTYZ5UMVRN293TFSWRF3NEYM59FFRHJ93AXAE5DMKWK5KUYR9YE2RCM
+                ballotVerification: passed
+                ballotVerifiedAt: "2022-01-20T21:15:13+00:00"
+                $type: Election
+        Office:
+            title: Office
+            required:
+                - uuid
+                - name
+                - kindUuid
+                - subjectUuid
+                - holderKindUuid
+                - parentUuid
+                - $type
+            description: |-
+                An office. Examples for offices are:
+
+                * “Fachrat Geschichte – Akademische Mitarbeiter*innen“
+                * “Fachrat Geschichte – Studierende”
+                * “Fachrat Geschichte”
+                * “Studierendenrat – Fachschaftsplatz Geographie“
+                * “Studierendenrat - Listenplätze”
+                * “Fachschaftsrat Molekulare Biotechnologie”
+            type: object
+            properties:
+                uuid:
+                    description: Uniquely identifies this office
+                    type: string
+                    format: uuid
+                    readOnly: true
+                name:
+                    description: Human-readable name of the office
+                    type: string
+                kindUuid:
+                    description: A uuid referencing an `OfficeKind`
+                    type: string
+                    format: uuid
+                subjectUuid:
+                    description: A uuid referencing a `Subject`
+                    type: [string, "null"]
+                    format: uuid
+                holderKindUuid:
+                    description: A uuid referencing an `OfficeHolderKind`
+                    type: [string, "null"]
+                    format: uuid
+                parentUuid:
+                    description: A uuid referencing its parent `Office`
+                    type: [string, "null"]
+                    format: uuid
+                email:
+                    description: An email address for contacting this office
+                    type: [string, "null"]
+                    format: idn-email
+                $type:
+                    type: string
+                    readOnly: true
+                    const: Office
+            example:
+                uuid: b4b93241-e22f-43bb-815b-9eb03d3dad80
+                name: Fachrat Psychologie – Studierende
+                kindUuid: 97ade844-4b84-4edb-9e27-344ada2a7d6c
+                subjectUuid: b7c06ca6-0c8a-491f-997f-56db5fbbabc6
+                holderKindUuid: 7b2e033c-f9e4-4943-a544-1ff2a832fe32
+                parentUuid: 4d7b693a-a741-46fd-8d19-a42fe7b9d03c
+                $type: Office
+        CommitmentVotes:
+            title: CommitmentVotes
+            description: Votes for a commitment in an election.
+            type: object
+            required:
+                - commitmentUuid
+                - votes
+            properties:
+                commitmentUuid:
+                    description: Uniquely identifies the commitment that received the votes.
+                    type: string
+                    format: uuid
+                votes:
+                    description: The number of votes the commitment received. It is nullable, because the number of votes a commitment received might be redacted for privacy reasons at some point in time. In this case, the value is changed to `null`. We still keep the CommitmentVotes object (even though it then only contains a commitment uuid) to hint at the fact that the number of votes is there, it is just not publicly displayed.
+                    type: [integer, "null"]
+            example:
+                commitmentUuid: a27a03a6-1ec8-49af-af7b-43524151f49b
+                votes: 159
+        Subject:
+            title: Subject
+            description: |-
+                A subject you can study at the university or that has a Fachschaft (usually both).
+            type: object
+            properties:
+                uuid:
+                    type: string
+                    readOnly: true
+                    format: uuid
+                name:
+                    type: string
+                $type:
+                    type: string
+                    readOnly: true
+                    const: Subject
+            example:
+                name: Japanologie
+                uuid: c83269fe-33d9-446f-a9cf-85de62a338d8
+                $type: Subject
+            required:
+                - uuid
+                - name
+                - $type
+        NamedDuration:
+            title: NamedDuration
+            description: A duration (of time) with a name in German and English
+            type: object
+            properties:
+                uuid:
+                    type: string
+                    readOnly: true
+                    format: uuid
+                name$de:
+                    type: string
+                name$en:
+                    type: string
+                $type:
+                    type: string
+                    readOnly: true
+                    const: NamedDuration
+            example:
+                name$de: ein Semester
+                name$en: one semester
+                uuid: 7942b5a4-a1b1-410a-8eff-6c9dd6c3546a
+                $type: NamedDuration
+            required:
+                - uuid
+                - name$de
+                - name$en
+                - $type
+        LocalDatePeriod:
+            title: LocalDatePeriod
+            description: "A local period consists of two local dates: A start and an end date."
+            type: object
+            required:
+                - start
+                - end
+            properties:
+                start:
+                    format: date
+                    type: string
+                end:
+                    format: date
+                    type: string
+            example:
+                start: "2022-04-01"
+                end: "2023-03-31"
+        InstantPeriod:
+            title: InstantPeriod
+            description: "An instant period consists of two instants: A start instant and an end instant"
+            type: object
+            required:
+                - start
+                - end
+            properties:
+                start:
+                    format: date-time
+                    type: string
+                end:
+                    format: date-time
+                    type: string
+            example:
+                start: 2023-01-13T21:51:27.417Z
+                end: 2023-01-21T21:51:00.000Z
+        OfficeKind:
+            title: OfficeKind
+            description: A kind of office, e.g. “Fachschaftsrat” or “Fachratspartition” or “Fachrat” or “Kommission“
+            type: object
+            required:
+                - uuid
+                - name
+                - $type
+            properties:
+                uuid:
+                    type: string
+                    readOnly: true
+                    format: uuid
+                name:
+                    type: string
+                $type:
+                    type: string
+                    readOnly: true
+                    const: OfficeKind
+            example:
+                name: Fachschaftsrat
+                uuid: 1fdb499b-5147-40d3-8dba-f2e7910f8b28
+                $type: OfficeKind
+        OfficeHolderKind:
+            title: OfficeHolderKind
+            description: A kind of office holder, e.g. “Studierende” or “HochschullehrerInnen”
+            type: object
+            required:
+                - uuid
+                - name
+                - $type
+            properties:
+                uuid:
+                    type: string
+                    readOnly: true
+                    format: uuid
+                name:
+                    type: string
+                $type:
+                    type: string
+                    readOnly: true
+                    const: OfficeHolderKind
+            example:
+                name: Studierende
+                uuid: 7b2e033c-f9e4-4943-a544-1ff2a832fe32
+                $type: OfficeHolderKind
+        VotingPoint:
+            title: VotingPoint
+            description: The equivalent of an election in the Genolive electronic voting system (“Abstimmungspunkt” in German). A voting point always belongs to exactly one voting (“Abstimmung”), which is another Genolive concept.
+            type: object
+            required:
+                - id
+                - votingId
+            properties:
+                id:
+                    type: [string, "null"]
+                votingId:
+                    type: [string, "null"]
+            example:
+                id: 2PHZQZD5UXDEFZL3QWDDSYZJEWA4RLAZNT9LFYYKJXMLRPP9DJRKN94LTN9
+                votingId: 7ZR79FA5ELCRHY7SKWW4YYLYDFDRHAPR4U3PSNSAKPFDDS3P4WKJNHF5ZF4
+        CertificationRequest:
+            title: CertificationRequest
+            description: Request to generate all commitment certifications for a person with the given Uni Id.
+            required:
+                - uuid
+                - uniId
+            type: object
+            properties:
+                uuid:
+                    type: string
+                    format: uuid
+                    readOnly: true
+                uniId:
+                    type: string
+                    description: The Uni ID of the person, issued by the university.
+            example:
+                uuid: 41c20206-d621-4a62-bb4e-b881a56040cd
+                uniId: jb007
+        ApplicationVersion:
+            title: ApplicationVersion
+            description: Version details about the application
+            required:
+                - isDevelop
+                - datetime
+                - authors
+                - commit
+            type: object
+            properties:
+                authors:
+                    type: array
+                    items:
+                        type: object
+                        properties:
+                            name:
+                                type: string
+                            email:
+                                type: string
+                            role:
+                                type: string
+                commit:
+                    type: [string, "null"]
+                datetime:
+                    format: date-time
+                    description: The datetime of the build or the current datetime.
+                    type: string
+                isDevelop:
+                    description:
+                        Indicates if this is a development version or one that comes
+                        from a built Docker image.
+                    type: boolean
+            example:
+                authors:
+                    - name: Max Mustermann
+                      email: mustermann@mail.example
+                      role: Maintainer
+                commit: 9988d805651ce7d553ac8556eb52692953a19db5
+                datetime: 2023-01-16T08:21:29+00:00
+                isDevelop: false
+        Key:
+            title: Key
+            description:
+                A key to authenticate against the API. It consists of a uuid (used
+                to manage the key) and a secret (which actually authenticates the user).
+            required:
+                - secret
+                - uuid
+                - createdAt
+                - expiresAt
+                - userUuid
+                - $type
+            type: object
+            properties:
+                uuid:
+                    description: A uuid to identify the key (which can be later used to delete it).
+                    type: string
+                    readOnly: true
+                    format: uuid
+                secret:
+                    description:
+                        A token that can be used as secret to authenticate against
+                        the API.
+                    type: string
+                    readOnly: true
+                createdAt:
+                    description: The zoned date and time this key was created at.
+                    type: string
+                    format: date-time
+                    readOnly: true
+                expiresAt:
+                    description: The zoned date and time this key expires at, i.e. after which it cannot be used anymore.
+                    type: string
+                    format: date-time
+                    readOnly: true
+                userUuid:
+                    description: The uuid of the user who created the key.
+                    type: string
+                    readOnly: true
+                    format: uuid
+                $type:
+                    type: string
+                    readOnly: true
+                    const: Key
+            example:
+                $type: Key
+                uuid: 2ce9dd96-fef2-4f9d-b3d4-2ab7ea9c11f6
+                secret: schwalbe.3CbapNRIF2biIY1B0lHy-CVu18xIu3X2YIvzZeWzE8A
+                createdAt: "2023-04-16T18:36:23+00:00"
+                expiresAt: "2023-04-16T19:36:23+00:00"
+                userUuid: 75e9ec37-54ff-4da3-b5cb-68e1870be3c0
+        User:
+            title: User
+            description:
+                A user of the application. They can log in to receive a key, with which
+                they then can perform protected operations.
+            required:
+                - uuid
+                - name
+                - password
+                - $type
+            type: object
+            properties:
+                uuid:
+                    description: A uuid to identify the user.
+                    type: string
+                    readOnly: true
+                    format: uuid
+                name:
+                    description: The name of the user, used at login.
+                    type: string
+                password:
+                    description: The password of the user. Stored as hash in the database, therefore a write only property.
+                    writeOnly: true
+                $type:
+                    type: string
+                    readOnly: true
+                    const: User
+            example:
+                $type: User
+                uuid: 8b913e0f-74d7-4b2a-92a6-13e9993551ae
+                name: alice
+    responses:
+        UnauthorizedError:
+            description: |-
+                Unauthorized to execute operation, because the session could not be authenticated, because either no authentication was provided or the provided authentication was invalid.
+        NotFoundError:
+            description: |-
+                The specified resource (i.e., object) could not be found. This can be because it truly doesn't exist (the more likely case), or because the client is not allowed to know the resource exists (e.g., because it is private and belongs to another user).
+        BadRequestError:
+            description: |-
+                The request body was invalid, because it is syntactically or semantically malformed. The error response by the server might provide more details.
+    parameters:
+        dereference:
+            name: dereference
+            schema:
+                type: boolean
+            in: query
+            required: false
+            description: |-
+                When set, references in the responses are replaced by the instances they reference.
+
+                Example: A field `subjectUuid` would be replaced by an instance of type `Subject`, represented in the same way a subject would be represented at its API endpoint.
+    securitySchemes:
+        secretBearerAuth:
+            scheme: bearer
+            bearerFormat: Random string
+            type: http
+            description: Authentication against endpoints with a secret using HTTP Bearer Auth
+        userPasswordAuth:
+            scheme: basic
+            type: http
+            description: Authentication against endpoints with a username and password using HTTP Basic Auth

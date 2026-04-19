@@ -25,6 +25,28 @@ if DJANGO_ENV == "prod":
 else:
     load_dotenv(BASE_DIR / ".env.dev")
 
+
+USE_SCHWALBE_IN_DEV = os.getenv("USE_SCHWALBE_IN_DEV", "False").lower() == "true"
+
+_default_data_source = "db"
+if DJANGO_ENV == "prod" or USE_SCHWALBE_IN_DEV:
+    _default_data_source = "schwalbe"
+
+# Explicit DATA_SOURCE always wins, e.g. "db" or "schwalbe".
+DATA_SOURCE = os.getenv("DATA_SOURCE", _default_data_source)
+SCHWALBE_API_BASE = os.getenv(
+    "SCHWALBE_API_BASE", "https://schwalbe.stura.uni-heidelberg.de/api/v3"
+)
+SCHWALBE_TIMEOUT_SECONDS = int(os.getenv("SCHWALBE_TIMEOUT_SECONDS", "10"))
+SCHWALBE_CACHE_SECONDS = int(os.getenv("SCHWALBE_CACHE_SECONDS", "120"))
+
+# The default status list only includes active candidacies.
+SCHWALBE_COMMITMENT_STATUSES = [
+    status.strip()
+    for status in os.getenv("SCHWALBE_COMMITMENT_STATUSES", "pending").split(",")
+    if status.strip()
+]
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 

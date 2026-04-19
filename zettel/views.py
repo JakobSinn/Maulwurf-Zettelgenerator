@@ -1,9 +1,15 @@
 from django.http import HttpResponse, HttpResponseServerError
 from django.shortcuts import render
 from django.views.generic import ListView
+from django.conf import settings
 
 from .forms import StimmzettelEigenschaftenForm, NameFormSet, ExtraFormSet
 from .models import Kandidatur
+from .schwalbe_client import (
+    SchwalbeAPIError,
+    get_candidates_for_gremium,
+    get_unique_gremien,
+)
 from .stimmzettelgenerator import zetteldrucken, heutestr, bericht
 
 
@@ -18,14 +24,18 @@ class UniqueGremiumListView(ListView):
 
     def get_queryset(self):
         try:
+            if settings.DATA_SOURCE == "schwalbe":
+                return [{"gremium": name} for name in get_unique_gremien()]
             return (
                 Kandidatur.objects.filter(bestaetigt="ja")
                 .filter(gewaehlt="noch nicht")
                 .values("gremium")
                 .distinct()
             )
-        except:  # noqa: E722
-            return {}
+        except SchwalbeAPIError:
+            return []
+        except Exception:
+            return []
 
 
 def KandiView(request, gremiumwanted=""):
@@ -116,21 +126,27 @@ def KandiView(request, gremiumwanted=""):
                     + repr(e)
                 )
     else:
-        namelist = (
-            Kandidatur.objects.filter(bestaetigt="ja")
-            .filter(gewaehlt="noch nicht")
-            .filter(gremium=gremiumwanted)
-        )
         initialname = []
-        for n in namelist:
-            initialname.append(
-                {
-                    "first_name": n.first_name,
-                    "last_name": n.last_name,
-                    "candidate_comment": n.fakultaetFachschaft,
-                    "lesung": n.lesung or " ACHTUNG: Keine Daten in DB!",
-                }
+        if settings.DATA_SOURCE == "schwalbe" and gremiumwanted:
+            try:
+                initialname = get_candidates_for_gremium(gremiumwanted)
+            except SchwalbeAPIError:
+                initialname = []
+        else:
+            namelist = (
+                Kandidatur.objects.filter(bestaetigt="ja")
+                .filter(gewaehlt="noch nicht")
+                .filter(gremium=gremiumwanted)
             )
+            for n in namelist:
+                initialname.append(
+                    {
+                        "first_name": n.first_name,
+                        "last_name": n.last_name,
+                        "candidate_comment": n.fakultaetFachschaft,
+                        "lesung": n.lesung or " ACHTUNG: Keine Daten in DB!",
+                    }
+                )
         initialdata = {"gremien_name": gremiumwanted, "stimmenzahl": len(initialname)}
         stimmzettel_eigenschaften_form = StimmzettelEigenschaftenForm(
             initial=initialdata
